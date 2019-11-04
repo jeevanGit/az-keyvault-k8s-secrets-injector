@@ -1,0 +1,17 @@
+FROM golang:1.12 AS builder
+
+WORKDIR /
+COPY . /
+
+FROM alpine:3.8
+#FROM appropriate/curl
+#ENV PORT {{ .PORT }}
+EXPOSE $PORT
+
+RUN apk add --no-cache --update ca-certificates curl jq
+COPY --from=builder ./bin/{{ .ServiceName }} /{{ .ServiceName }}
+COPY --from=builder config.json  /
+COPY --from=builder credentials.json  /
+COPY --from=builder set_path.sh  /
+
+ENTRYPOINT ["/{{ .ServiceName }}", "ENV_SECRET1=secret1@test-vault-1a", "ENV_KEY1=key1@test-vault-1a"]
