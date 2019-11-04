@@ -14,4 +14,6 @@ COPY --from=builder config.json  /
 COPY --from=builder credentials.json  /
 COPY --from=builder set_path.sh  /
 
-ENTRYPOINT ["/{{ .ServiceName }}", "echo", "ENV_SECRET1=secret1@test-vault-1a", "ENV_KEY1=key1@test-vault-1a"]
+ENV ENV_KEY1 key1@test-vault-1a
+
+ENTRYPOINT ["/{{ .ServiceName }}", "echo", "ARG_SECRET1=secret1@test-vault-1a", "ARG_KEY1=key1@test-vault-1a"]
