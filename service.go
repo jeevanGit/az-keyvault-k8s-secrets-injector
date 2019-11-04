@@ -67,9 +67,9 @@ func main() {
 
 	os.Setenv("CUSTOM_AUTH_INJECT", "true")
 
-	os.Setenv("AZURE_TENANT_ID", viper.GetString("creds.AZURE_TENANT_ID"))
-	os.Setenv("AZURE_CLIENT_ID", viper.GetString("creds.AZURE_CLIENT_ID"))
-	os.Setenv("AZURE_CLIENT_SECRET", viper.GetString("creds.AZURE_CLIENT_SECRET"))
+	//os.Setenv("AZURE_TENANT_ID", viper.GetString("creds.AZURE_TENANT_ID"))
+	//os.Setenv("AZURE_CLIENT_ID", viper.GetString("creds.AZURE_CLIENT_ID"))
+	//os.Setenv("AZURE_CLIENT_SECRET", viper.GetString("creds.AZURE_CLIENT_SECRET"))
 
 	authorizer, err := kvauth.NewAuthorizerFromEnvironment()
 	if err != nil {
@@ -82,38 +82,26 @@ func main() {
 	//basicClient.RequestInspector = logRequest()
 	//basicClient.ResponseInspector = logResponse()
 
+	// Parse env variables
+	environ := os.Environ()
+	for _, pair := range environ {
+		envname, envvar := parseKeyVaultVariable(basicClient, pair)
+		if envname != "" {
+			os.Setenv(envname , envvar)
+		}
+  }
+	// Parse arguments
 	flag.Parse()
 	for _, arg := range os.Args {
-
-		if strings.Contains(arg, "=") {
-			envsplit := strings.Split( arg, "=" )
-			if strings.Contains( envsplit[1], "@") {
-				vaultsplit := strings.Split( envsplit[1], "@" )
-				log.Infof("INFO: Starting vault service for vault '%s', with key '%s'", vaultsplit[1] , vaultsplit[0] )
-				//fmt.Printf("vault name: %s and it's key %s \n", vaultsplit[1], vaultsplit[0])
-				if vaultsplit[0] != "" {
-					secretResp, err :=  getSecret( basicClient, vaultsplit[1], vaultsplit[0])
-					if err != nil {
-						//fmt.Printf("unable to get value for secret: %v\n", err)
-						log.Errorf("%s unable to get value for secret:  %s", logPrefix, err.Error())
-					}else{
-						log.Info(">>> secretResp.Value: " + *secretResp.Value)
-						os.Setenv(envsplit[0] , *secretResp.Value)
-					}
-				}
-			}else{
-				log.Info("Skipping argument value from parsing: " + arg)
-			}
-		}else{
-			log.Info("Skipping argument: " + arg)
+		envname, envvar := parseKeyVaultVariable(basicClient, arg)
+		if envname != "" {
+			os.Setenv(envname , envvar)
 		}
 
 	}
 
-	environ := os.Environ()
-	for _, pair := range environ {
-    log.Info( pair )
-  }
+	environ = os.Environ()
+	for _, pair := range environ { log.Debug( pair )  }
 
 	if len(os.Args) == 1 {
 		log.Fatalf("%s no command is given, currently vault-env can't determine the entrypoint (command), please specify it explicitly", logPrefix)
@@ -131,6 +119,36 @@ func main() {
 
 	log.Debugf("%s azure key vault env injector successfully injected env variables with secrets", logPrefix)
 	log.Debugf("%s azure key vault env injector", logPrefix)
+
+}
+
+func parseKeyVaultVariable(basicClient keyvault.BaseClient, arg string) (string, string) {
+
+	if strings.Contains(arg, "=") {
+		envsplit := strings.Split( arg, "=" )
+		if strings.Contains( envsplit[1], "@") {
+			vaultsplit := strings.Split( envsplit[1], "@" )
+			log.Infof("parseKeyVaultVariable: parsing vault service for vault '%s', with key '%s'", vaultsplit[1] , vaultsplit[0] )
+			if vaultsplit[0] != "" {
+				secretResp, err :=  getSecret( basicClient, vaultsplit[1], vaultsplit[0])
+				if err != nil {
+					log.Errorf("%s unable to get value for secret:  %s", logPrefix, err.Error())
+					return "", ""
+				}else{
+					log.Info(">>> secretResp.Value: " + *secretResp.Value)
+					//os.Setenv(envsplit[0] , *secretResp.Value)
+					return envsplit[0] , *secretResp.Value
+				}
+			}
+		}else{
+			log.Info("parseKeyVaultVariable: Skipping argument value from parsing: " + arg)
+			return "", ""
+		}
+	}else{
+		log.Info("Skipping argument: " + arg)
+		return "", ""
+	}
+	return "", ""
 
 }
 
