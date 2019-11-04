@@ -112,7 +112,7 @@ func main() {
 
 	environ := os.Environ()
 	for _, pair := range environ {
-    log.Debug( pair )
+    log.Info( pair )
   }
 
 	if len(os.Args) == 1 {
@@ -131,20 +131,6 @@ func main() {
 
 	log.Debugf("%s azure key vault env injector successfully injected env variables with secrets", logPrefix)
 	log.Debugf("%s azure key vault env injector", logPrefix)
-
-/*
-	binary_name := "/set_path.sh"
-	binary, err := exec.LookPath( binary_name )
-	if err != nil {
-		log.Errorf("binary not found: %s", binary_name)
-	}
-	args := []string{"set_path.sh", "myenvvar", "my_env_var_value"}
-	log.Infof("starting process %s %v", binary, args)
-	err = syscall.Exec(binary, args, os.Environ())
-	if err != nil {
-		log.Errorf("failed to exec process '%s': %s", binary, err.Error() )
-	}
-*/
 
 }
 
