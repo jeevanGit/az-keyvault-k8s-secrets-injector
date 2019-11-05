@@ -11,8 +11,7 @@ EXPOSE $PORT
 RUN apk add --no-cache --update ca-certificates curl jq
 COPY --from=builder ./bin/{{ .ServiceName }} /{{ .ServiceName }}
 COPY --from=builder config.json  /
-COPY --from=builder credentials.json  /
-COPY --from=builder set_path.sh  /
+#COPY --from=builder credentials.json  /
 
 ENV ENV_KEY1 key1@test-vault-1a
 
