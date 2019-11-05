@@ -2,18 +2,19 @@ COMMIT?=$(shell git rev-parse --short HEAD)
 BUILD_TIME?=$(shell date -u '+%Y-%m-%d_%H:%M:%S')
 GOOS?=linux
 GOARCH?=amd64
+PROJECT?=
 
 include vars-az.mk
 
-APP?=service-az-keyvault
+APP?=az-env-injector
+PORT?=8001
 APIVER?=v1
-RELEASE?=1.0
+RELEASE?=1.0.2
 IMAGE?=${DOCKER_ORG}/${APP}:${RELEASE}
-
 ENV?=DEV
 
-K8S_CHART?=service-az-keyvault
-K8S_NAMESPACE?=dev
+K8S_CHART?=azure-keyvault-secrets
+K8S_NAMESPACE?=app1-a-ns
 NODESELECTOR?=services
 
 helm:
@@ -22,14 +23,14 @@ helm:
 		helm init --service-account tiller --upgrade
 
 clean:
-		rm -f ${APP}
+		rm -f ./bin/${APP}
 
 build: clean
 		echo "GOPATH: " ${GOPATH}
 		CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} go build \
-			-ldflags "-s -w -X ${PROJECT}/version.Release=${RELEASE} \
-			-X ${PROJECT}/version.Commit=${COMMIT} -X ${PROJECT}/version.BuildTime=${BUILD_TIME}" \
-			-o ${APP}
+			-ldflags "-s -w -X version.Release=${RELEASE} \
+			-X version.Commit=${COMMIT} -X version.BuildTime=${BUILD_TIME}" \
+			-o ./bin/${APP}
 
 run: container
 		docker stop ${APP} || true && docker rm ${APP} || true
@@ -42,14 +43,14 @@ push: container
 
 container: build
 		# generate dockerfile from template
-		for t in $(shell find ./src/github.com/oleggorj/service-common-lib/docker/ -type f -name "Dockerfile.goservice.template"); do \
+		for t in $(shell find ./ -type f -name "Dockerfile.goservice.template"); do \
 					cat $$t | \
 						sed -E "s/{{ .PORT }}/$(PORT)/g" | \
 						sed -E "s/{{ .ServiceName }}/$(APP)/g"; \
 		done > ./Dockerfile
-		docker build -t $(IMAGE) .
+		-docker build -t $(IMAGE) .
 		rm Dockerfile
-		rm -f ${APP}
+		rm -f ./bin/${APP}
 
 deployclean:
 		helm del --purge "${K8S_CHART}-${K8S_NAMESPACE}"
@@ -69,7 +70,7 @@ deploy:
 		helm install --name "${K8S_CHART}-${K8S_NAMESPACE}" --values ./charts/${K8S_CHART}/values.yaml --namespace ${K8S_NAMESPACE}  ./charts/${K8S_CHART}/
 		echo "Cleaning up temp files.." && rm ./charts/${K8S_CHART}/values.yaml
 		kubectl get services --all-namespaces | grep ${APP}
-		./scripts/githook.sh ${APP} ${LB_EXTERNAL_PORT} webhook_git ${GITUSER} ${GITREPO} ${K8S_NAMESPACE}
+		echo  $(kubectl get pods -n $namespace -l app=$(IMAGE) -o jsonpath='{.items[].metadata.name}')
 
 
 .PHONY: glide
