@@ -41,17 +41,15 @@ type GitCredentials struct {
 
 const (
 	logPrefix    = "env-injector:"
-	envLookupKey = "@azurekeyvault"
 )
 
 func init() {
-	//args := os.Args
-
 	log.SetFormatter(&log.TextFormatter{
 		DisableColors: true,
 		FullTimestamp: true,
 	})
-	//log.SetReportCaller(true)
+	log.SetLevel(log.DebugLevel)
+
 	viper.SetConfigName("config")
 	viper.AddConfigPath(".") ; viper.AddConfigPath("/")
 	err := viper.ReadInConfig()
@@ -63,8 +61,7 @@ func init() {
 }
 
 func main() {
-	log.Info("Starting service '" + serviceAppName + "'...")
-
+	log.Debugf("%s Starting azure key vault env injector", logPrefix)
 	os.Setenv("CUSTOM_AUTH_INJECT", "true")
 
 	//os.Setenv("AZURE_TENANT_ID", viper.GetString("creds.AZURE_TENANT_ID"))
@@ -79,10 +76,14 @@ func main() {
 	}
 	basicClient := keyvault.New()
 	basicClient.Authorizer = authorizer
+	// debug
 	//basicClient.RequestInspector = logRequest()
 	//basicClient.ResponseInspector = logResponse()
 
-	// Parse env variables
+	log.Info("<<<<<<< Environment BEFORE >>>>>>>>>")
+	for _, pair := range os.Environ() {  log.Debug( pair )  }
+
+	// Parse env variables and populate env vars from keyvault
 	environ := os.Environ()
 	for _, pair := range environ {
 		envname, envvar := parseKeyVaultVariable(basicClient, pair)
@@ -90,7 +91,7 @@ func main() {
 			os.Setenv(envname , envvar)
 		}
   }
-	// Parse arguments
+	// Parse arguments and populate env vars from keyvault
 	flag.Parse()
 	for _, arg := range os.Args {
 		envname, envvar := parseKeyVaultVariable(basicClient, arg)
@@ -100,8 +101,9 @@ func main() {
 
 	}
 
-	environ = os.Environ()
-	for _, pair := range environ { log.Debug( pair )  }
+	log.Info("<<<<<<< Environment AFTER >>>>>>>>>")
+	for _, pair := range os.Environ() {  log.Debug( pair )  }
+
 
 	if len(os.Args) == 1 {
 		log.Fatalf("%s no command is given, currently vault-env can't determine the entrypoint (command), please specify it explicitly", logPrefix)
@@ -118,8 +120,12 @@ func main() {
 	}
 
 	log.Debugf("%s azure key vault env injector successfully injected env variables with secrets", logPrefix)
-	log.Debugf("%s azure key vault env injector", logPrefix)
+	log.Debugf("%s shutting down azure key vault env injector", logPrefix)
+}
 
+func printEnv() {
+	environ := os.Environ()
+	for _, pair := range environ {  log.Debug( pair )  }
 }
 
 func parseKeyVaultVariable(basicClient keyvault.BaseClient, arg string) (string, string) {
