@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-app
+  labels:
+    cloud.org.com/AppCode: AC0001
+    cloud.org.com/AzureKeyVault: aks-AC0001-keyvault
+    cloud.org.com/AzureKeyVault1a: test-vault-1a
+    cloud.org.com/AzureKeyVaultTag_App1: az-keyvault-tag-AC0001
+    aadpodidbinding: pod-selector-label
+    app: env_injector
+spec:
+  containers:
+  - name: vault-env
+    image: securityopregistrytest.azurecr.io/env-injector:v1alpha1-release-0.1
+    args:
+      - /env_injector
+      - debug=false
+    imagePullPolicy: Always
+    env:
+      - name: env_secret_name
+        value: secret1@az-keyvault-app1
+      - name: env_secret_key
+        value: key1@az-keyvault-app1
