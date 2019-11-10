@@ -6,16 +6,17 @@ PROJECT?=
 
 include vars-az.mk
 
-APP?=az-env-injector
+APP?=env-injector
 PORT?=8001
 APIVER?=v1
-RELEASE?=1.0.2
+RELEASE?=v1alpha1-release-0.1
+#IMAGE?=securityopregistrytest.azurecr.io/env_injector
 IMAGE?=${DOCKER_ORG}/${APP}:${RELEASE}
 ENV?=DEV
-
 K8S_CHART?=azure-keyvault-secrets
-K8S_NAMESPACE?=app1-a-ns
+K8S_NAMESPACE?=app1-ns
 NODESELECTOR?=services
+
 
 helm:
 		kubectl create serviceaccount --namespace kube-system tiller
@@ -68,10 +69,11 @@ deploy:
 						sed -E "s/{{ .DockerOrg }}/$(DOCKER_ORG)/g"; \
 		done > ./charts/${K8S_CHART}/values.yaml
 		helm install --name "${K8S_CHART}-${K8S_NAMESPACE}" --values ./charts/${K8S_CHART}/values.yaml --namespace ${K8S_NAMESPACE}  ./charts/${K8S_CHART}/
-		echo "Cleaning up temp files.." && rm ./charts/${K8S_CHART}/values.yaml
+		echo "Cleaning up temp files.."
 		kubectl get services --all-namespaces | grep ${APP}
-		echo  $(kubectl get pods -n $namespace -l app=$(IMAGE) -o jsonpath='{.items[].metadata.name}')
+		echo $(kubectl get pods -n $namespace -l app=$(IMAGE) -o jsonpath='{.items[].metadata.name}')
 
+# echo "Cleaning up temp files.." && rm ./charts/${K8S_CHART}/values.yaml
 
 .PHONY: glide
 glide:
