@@ -18,7 +18,13 @@ spec:
       - debug=false
     imagePullPolicy: Always
     env:
+      - name: AzureKeyVault
+        value: aks-AC0001-keyvault
+
       - name: env_secret_name
-        value: secret1@az-keyvault-app1
+        value: secret1@AzureKeyVault
       - name: env_secret_key
-        value: key1@az-keyvault-app1
+        value: key1@AzureKeyVault
+
+      - name: debug
+        value: "false"
