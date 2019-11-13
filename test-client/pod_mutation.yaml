@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: busybox
+  namespace: mutation-test-ns
+  labels:
+    cloud.rbc.com/AzureKeyVault: operator-test-vault2
+    aadpodidbinding: pod-selector-label
+spec:
+  containers:
+  - name: busybox
+    command: ["sh", "-c", "/azure-kv/azure-kv-env /my-application-script.sh"]
+    imagePullPolicy: Always
+    image: securityopregistrytest.azurecr.io/test-client:v1alpha1
+    env:
+      - name: ENV_VARIABLE_NAME
+        value: secret-name@azurekeyvault
+      - name: debug
+        value: "true"
+  restartPolicy: Always
