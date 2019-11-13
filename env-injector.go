@@ -54,13 +54,7 @@ func init() {
 		panic( fmt.Errorf("Fatal error config file: %s \n", err) )
 	}
 */
-	// init from confif file
-	//vaultVariableName = viper.GetString("service.vault.vaultVariableName")
-	// get name of the vault
-	//vaultName = getEnvVariableByName(vaultVariableName)
-	//if vaultName == "" {
-	//	log.Errorf("%s Unable to retrive Vault's name.", logPrefix)
-	//}
+
 	config = azureEnvInjectorConfig{
 		vaultName: vaultVarName,
 		vaultVariableName: "",
@@ -105,7 +99,8 @@ func main() {
 	*/
 
 	log.Debug("<<<<<<< Environment AFTER >>>>>>>>>")
-	for _, pair := range os.Environ() {  log.Info( pair )  }
+	environ = os.Environ()
+	for _, pair := range environ {  log.Info( pair )  }
 
 	if len(os.Args) == 1 {
 		log.Fatalf("%s no command is given, currently vault-env can't determine the entrypoint (command), please specify it explicitly", logPrefix)
