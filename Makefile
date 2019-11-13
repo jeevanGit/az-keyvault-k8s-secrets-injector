@@ -12,7 +12,6 @@ APIVER?=v1
 RELEASE?=v1alpha1
 #IMAGE?=securityopregistrytest.azurecr.io/env_injector
 IMAGE?=${DOCKER_ORG}/${APP}:${RELEASE}
-IMAGE_derived?=${DOCKER_ORG}/${APP}-derived:${RELEASE}
 ENV?=DEV
 K8S_CHART?=azure-keyvault-secrets
 K8S_NAMESPACE?=app1-ns
@@ -40,11 +39,9 @@ run: container
 
 push: container
 		docker push $(IMAGE)
-		docker push $(IMAGE_derived)
 
 container: build
 		-docker build -t $(IMAGE) .
-		-docker build -t $(IMAGE_derived) ./combined
 		cp ./bin/${APP} ./combined
 		rm -f ./bin/${APP}
 
