@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fake-controller
+  labels:
+    app: fake-controller
+spec:
+  containers:
+  - name: test-deployment
+    image: securityopregistrytest.azurecr.io/test-deployment:v1alpha1
+    args:
+      - sleep
+      - "9900000"
+    imagePullPolicy: Always
