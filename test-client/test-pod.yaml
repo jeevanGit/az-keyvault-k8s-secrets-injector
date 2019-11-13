@@ -11,20 +11,21 @@ metadata:
     app: env_injector
 spec:
   containers:
-  - name: vault-env
-    image: securityopregistrytest.azurecr.io/env-injector:v1alpha1-release-0.1
+  - name: vault-env-1
+    image: securityopregistrytest.azurecr.io/env-injector:v1alpha1
     args:
-      - /env_injector
-      - debug=false
+      - ls
+      - -l
+      - /usr/local/bin/
     imagePullPolicy: Always
     env:
       - name: AzureKeyVault
         value: aks-AC0001-keyvault
-
       - name: env_secret_name
         value: secret1@AzureKeyVault
       - name: env_secret_key
         value: key1@AzureKeyVault
-
       - name: debug
         value: "false"
+
+    imagePullPolicy: Always

@@ -2,10 +2,10 @@ package main
 
 import (
 	_ "encoding/json"
-	"fmt"
-	"github.com/spf13/viper"
+	_ "fmt"
+	_ "github.com/spf13/viper"
 	"context"
-	"flag"
+	_ "flag"
 	"net/http"
 	"net/http/httputil"
 	"os"
@@ -22,14 +22,17 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var (
-	serviceAppName    string
+type azureEnvInjectorConfig struct {
 	vaultName 				string
 	vaultVariableName	string
-
+}
+var (
+	serviceAppName    string
+	config azureEnvInjectorConfig
 )
 const (
 	logPrefix    = "env-injector:"
+	vaultVarName = "AzureKeyVault"
 )
 //------------------------------------------------------------------------------
 
@@ -44,20 +47,26 @@ func init() {
 		log.SetLevel(log.InfoLevel)
 	}
 
+/*
 	viper.SetConfigName("config")
 	viper.AddConfigPath(".") ; viper.AddConfigPath("/")
-	err := viper.ReadInConfig()
-	if err != nil {
-		panic(fmt.Errorf("Fatal error config file: %s \n", err))
+	err := viper.ReadInConfig(); if err != nil {
+		panic( fmt.Errorf("Fatal error config file: %s \n", err) )
 	}
+*/
 	// init from confif file
-	serviceAppName = viper.GetString("service.name")
-	vaultVariableName = viper.GetString("service.vault.vaultVariableName")
+	//vaultVariableName = viper.GetString("service.vault.vaultVariableName")
 	// get name of the vault
-	vaultName = getEnvVariableByName(vaultVariableName)
-	if vaultName == "" {
-		log.Errorf("%s Unable to retrive Vault's name.", logPrefix)
+	//vaultName = getEnvVariableByName(vaultVariableName)
+	//if vaultName == "" {
+	//	log.Errorf("%s Unable to retrive Vault's name.", logPrefix)
+	//}
+	config = azureEnvInjectorConfig{
+		vaultName: vaultVarName,
+		vaultVariableName: "",
 	}
+	log.Infof("vaultVariableName: %s\n", config.vaultVariableName)
+	log.Infof("vaultName: %s\n", config.vaultName)
 }
 
 func main() {
@@ -84,6 +93,7 @@ func main() {
 		}
   }
 	// Parse arguments and populate env vars from keyvault
+	/*
 	flag.Parse()
 	for _, arg := range os.Args {
 		envname, envvar := parseKeyVaultVariable(vaultClient, arg)
@@ -92,9 +102,10 @@ func main() {
 		}
 
 	}
+	*/
 
 	log.Debug("<<<<<<< Environment AFTER >>>>>>>>>")
-	for _, pair := range os.Environ() {  log.Debug( pair )  }
+	for _, pair := range os.Environ() {  log.Info( pair )  }
 
 	if len(os.Args) == 1 {
 		log.Fatalf("%s no command is given, currently vault-env can't determine the entrypoint (command), please specify it explicitly", logPrefix)
@@ -140,9 +151,12 @@ func parseKeyVaultVariable(vaultClient keyvault.BaseClient, arg string) (string,
 		if strings.Contains( envsplit[1], "@") {
 			vaultsplit := strings.Split( envsplit[1], "@" )
 
-			log.Debugf("parseKeyVaultVariable: parsing vault service for vault '%s', with key '%s'", vaultName, vaultsplit[0] )
+			vname := getEnvVariableByName(config.vaultName)
+
+			log.Debugf("parseKeyVaultVariable: parsing vault service for vault '%s', with key '%s'", vname, vaultsplit[0] )
 			if vaultsplit[0] != "" {
-				secretResp, err :=  getSecret( vaultClient, vaultName, vaultsplit[0])
+				secretResp, err :=  getSecret( vaultClient, vname, vaultsplit[0] )
+
 				if err != nil {
 					log.Errorf("%s unable to get value for secret:  %v", logPrefix, err.Error())
 					return "", ""
@@ -151,9 +165,9 @@ func parseKeyVaultVariable(vaultClient keyvault.BaseClient, arg string) (string,
 					return envsplit[0] , *secretResp.Value
 				}
 			}
-
+			log.Infof("parseKeyVaultVariable: Parsing argument value from env: %s", arg)
 		}else{
-			log.Infof("parseKeyVaultVariable: Skipping argument value from parsing: %s", arg)
+			log.Infof("parseKeyVaultVariable: Skipping argument value from env: %s", arg)
 			return "", ""
 		}
 	}else{
