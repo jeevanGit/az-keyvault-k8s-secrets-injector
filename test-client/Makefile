@@ -4,35 +4,37 @@ GOOS?=linux
 GOARCH?=amd64
 PROJECT?=
 
-include vars-az.mk
+include ../vars-az.mk
 
 APP?=test-client
-PORT?=8001
 APIVER?=v1
 RELEASE?=v1alpha1
 IMAGE?=${DOCKER_ORG}/${APP}:${RELEASE}
 ENV?=DEV
-K8S_NAMESPACE?=app1-ns
 
-helm:
-		kubectl create serviceaccount --namespace kube-system tiller
-		kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
-		helm init --service-account tiller --upgrade
+
+clean:
+		rm -f ./bin/${APP}
+
+build: clean
+		echo "GOPATH: " ${GOPATH}
+		CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} go build \
+			-ldflags "-s -w -X version.Release=${RELEASE} \
+			-X version.Commit=${COMMIT} -X version.BuildTime=${BUILD_TIME}" \
+			-o ./bin/${APP}
 
 run: container
 		docker stop ${APP} || true && docker rm ${APP} || true
-		docker run --name ${APP} -p ${PORT}:${PORT} --rm \
-			-e "PORT=${PORT}" \
+		docker run --name ${APP} --rm \
 			$(IMAGE)
 
 push: container
 		docker push $(IMAGE)
 
-container:
-		docker build -t $(IMAGE) .
-
-deployclean:
-		helm del --purge "${K8S_CHART}-${K8S_NAMESPACE}"
+container: build
+		-docker build -t $(IMAGE) .
+		cp ./bin/${APP} ./combined
+		rm -f ./bin/${APP}
 
 .PHONY: glide
 glide:
