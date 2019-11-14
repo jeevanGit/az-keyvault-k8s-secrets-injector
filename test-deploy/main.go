@@ -9,13 +9,11 @@ import (
 	"os"
 	"path/filepath"
 
-	/*appsv1 "k8s.io/api/apps/v1"*/
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
-	_ "k8s.io/client-go/util/retry"
 )
 
 const (
@@ -89,7 +87,7 @@ func main() {
 						{
 							Name:  "test-client",
 							Image: "securityopregistrytest.azurecr.io/test-client:v1alpha1",
-              Command: []string{ "sh", "-c", "/azure-keyvault/env-injector sleep 6000" },
+              Command: []string{ "sh", "-c", "/azure-keyvault/env-injector /my-application-script.sh" },
               ImagePullPolicy: apiv1.PullAlways,
               VolumeMounts: []apiv1.VolumeMount{
           			{
@@ -145,46 +143,6 @@ func main() {
 	}
 	fmt.Printf("Created pod %q.\n", result_pod.GetObjectMeta().GetName())
 
-/*
-	result, err := deploymentsClient.Create(deployment)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Created deployment %q.\n", result.GetObjectMeta().GetName())
-
-	// Update Deployment
-	prompt()
-	fmt.Println("Updating deployment...")
-	//    You have two options to Update() this Deployment:
-	//
-	//    1. Modify the "deployment" variable and call: Update(deployment).
-	//       This works like the "kubectl replace" command and it overwrites/loses changes
-	//       made by other clients between you Create() and Update() the object.
-	//    2. Modify the "result" returned by Get() and retry Update(result) until
-	//       you no longer get a conflict error. This way, you can preserve changes made
-	//       by other clients between Create() and Update(). This is implemented below
-	//			 using the retry utility package included with client-go. (RECOMMENDED)
-	//
-	// More Info:
-	// https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency
-
-	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := deploymentsClient.Get("env-injector-deployment", metav1.GetOptions{})
-		if getErr != nil {
-			panic(fmt.Errorf("Failed to get latest version of Deployment: %v", getErr))
-		}
-
-		result.Spec.Replicas = int32Ptr(1)
-		result.Spec.Template.Spec.Containers[0].Image = "securityopregistrytest.azurecr.io/env-injector:v1alpha1"
-		_, updateErr := deploymentsClient.Update(result)
-		return updateErr
-	})
-	if retryErr != nil {
-		panic(fmt.Errorf("Update failed: %v", retryErr))
-	}
-	fmt.Println("Updated deployment...")
-*/
-
 	// List Deployments
 	prompt()
 	fmt.Printf("Listing deployments in namespace %q:\n", apiv1.NamespaceDefault)
@@ -206,17 +164,6 @@ func main() {
 		panic(err)
 	}
 	fmt.Println("Deleted Pod.")
-
-/*
-	fmt.Println("Deleting deployment...")
-	deletePolicy := metav1.DeletePropagationForeground
-	if err := deploymentsClient.Delete("env-injector-deployment", &metav1.DeleteOptions{
-		PropagationPolicy: &deletePolicy,
-	}); err != nil {
-		panic(err)
-	}
-	fmt.Println("Deleted deployment.")
-*/
 
 }
 
