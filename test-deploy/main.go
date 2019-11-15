@@ -100,9 +100,9 @@ func main() {
                 { Name: "env_secret_name", Value: "secret1@AzureKeyVault", },
                 { Name: "debug", Value: "true", },
 								{ Name: "SECRET_INJECTOR_SECRET_NAME_secret1", Value: "secret1", },
-								{ Name: "SECRET_INJECTOR_MOUNT_PATH_secret1", Value: "/azure-keyvault", },
+								{ Name: "SECRET_INJECTOR_MOUNT_PATH_secret1", Value: "/etc/secrets", },
 								{ Name: "SECRET_INJECTOR_SECRET_NAME_secret2", Value: "secret1", },
-								{ Name: "SECRET_INJECTOR_MOUNT_PATH_secret2", Value: "/azure-keyvault", },
+								{ Name: "SECRET_INJECTOR_MOUNT_PATH_secret2", Value: "/etc/secrets", },
               },
 
             },
