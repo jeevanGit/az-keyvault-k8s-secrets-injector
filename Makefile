@@ -6,7 +6,7 @@ PROJECT?=
 
 include vars-az.mk
 
-APP?=env-injector
+APP?=secret-injector
 APIVER?=v1
 RELEASE?=v1alpha1
 IMAGE?=${DOCKER_ORG}/${APP}:${RELEASE}
@@ -33,7 +33,6 @@ push: container
 
 container: build
 		-docker build -t $(IMAGE) .
-		cp ./bin/${APP} ./combined
 		rm -f ./bin/${APP}
 
 .PHONY: glide

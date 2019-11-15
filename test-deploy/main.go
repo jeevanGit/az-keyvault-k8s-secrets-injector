@@ -17,7 +17,7 @@ import (
 )
 
 const (
-  controllerPodName = "env-injector-pod"
+  controllerPodName = "application-pod"
 )
 
 func main() {
@@ -49,8 +49,8 @@ func main() {
 				Spec: apiv1.PodSpec{
           InitContainers: []apiv1.Container{
 						{
-							Name:  "env-injector-init",
-							Image: "securityopregistrytest.azurecr.io/env-injector:v1alpha1",
+							Name:  "secret-injector-init",
+							Image: "securityopregistrytest.azurecr.io/secret-injector:v1alpha1",
               Command: []string{ "sh", "-c", "cp /usr/local/bin/* /azure-keyvault/" },
               ImagePullPolicy: apiv1.PullAlways,
               VolumeMounts: []apiv1.VolumeMount{
@@ -87,7 +87,7 @@ func main() {
 						{
 							Name:  "test-client",
 							Image: "securityopregistrytest.azurecr.io/test-client:v1alpha1",
-              Command: []string{ "sh", "-c", "/azure-keyvault/env-injector /my-application-script.sh" },
+              Command: []string{ "sh", "-c", "/azure-keyvault/secret-injector /my-application-script.sh" },
               ImagePullPolicy: apiv1.PullAlways,
               VolumeMounts: []apiv1.VolumeMount{
           			{
@@ -96,15 +96,13 @@ func main() {
           			},
           		},
               Env: []apiv1.EnvVar{
-                {
-                  Name: "AzureKeyVault", Value: "aks-AC0001-keyvault",
-                },
-                {
-                  Name: "env_secret_name", Value: "secret1@AzureKeyVault",
-                },
-                {
-                  Name: "debug", Value: "true",
-                },
+                { Name: "AzureKeyVault", Value: "aks-AC0001-keyvault",  },
+                { Name: "env_secret_name", Value: "secret1@AzureKeyVault", },
+                { Name: "debug", Value: "true", },
+								{ Name: "SECRET_INJECTOR_SECRET_NAME_secret1", Value: "secret1", },
+								{ Name: "SECRET_INJECTOR_MOUNT_PATH_secret1", Value: "/azure-keyvault", },
+								{ Name: "SECRET_INJECTOR_SECRET_NAME_secret2", Value: "secret1", },
+								{ Name: "SECRET_INJECTOR_MOUNT_PATH_secret2", Value: "/azure-keyvault", },
               },
 
             },
