@@ -69,7 +69,9 @@ const (
 	patternSecretMountPath = "secret_injector_mount_path_"
 )
 //------------------------------------------------------------------------------
-
+//
+// initialize/set environment
+//
 func init() {
 	log.SetFormatter( &log.TextFormatter{
 		DisableColors: true,
@@ -100,18 +102,18 @@ func main() {
 		//
 		// Parse env variables and populate env vars from keyvault
 		//
-		envname, envvar := parseEnvKeyVaultVariable(injector.vaultClient, pair)
+		envname, envvar := injector.parseEnvKeyVaultVariable( pair )
 		if envname != "" {
 			os.Setenv(envname , envvar)
 		}
 		//
 		// Parse env variables and populate files with secrets
 		//
-		mntPath, secName := retrieveSecretMountPath( pair )
+		mntPath, secName := injector.retrieveSecretMountPath( pair )
 		if mntPath != "" {
 
 			// get secret based on the name
-			secret, err := retrieveSecret(secName)
+			secret, err := injector.retrieveSecret(secName)
 			if err != nil {
 				log.Errorf("%s unable to get value for secret:  %v", logPrefix, err.Error())
 			}
@@ -187,7 +189,7 @@ func getEnvVariableByName(variableName string) (string) {
 //
 // Function to retrive the secret from the vault based on its name
 //
-func retrieveSecret(secName string) (string, error){
+func (injector azureSecretsInjector)retrieveSecret(secName string) (string, error){
 	sec := ""
 	secretResp, err :=  getSecret( injector.vaultClient, injector.vaultName, secName )
 	if err != nil {
@@ -245,41 +247,41 @@ func generateSecretsFile(mntPath, secName, secret string) (error) {
 // than, finds matching mount path for given secret name
 // return value: (mount path varible name , actual mount path, secret name)
 //
-func retrieveSecretMountPath(variable string) (string, string) {
+func (injector azureSecretsInjector) retrieveSecretMountPath(variable string) (string, string) {
 
 	if strings.Contains( strings.ToLower(variable) , patternSecretName ) {
 
-		log.Debugf("retrieveSecretMountPath: Found matching env variable: %s", strings.ToLower(variable))
+		log.Debugf("Found matching env variable: %s", strings.ToLower(variable))
 		sec_name := between(strings.ToLower(variable), patternSecretName, "=")
-		log.Debugf("retrieveSecretMountPath: secret name: %s", sec_name)
+		log.Debugf("Secret name: %s", sec_name)
 
 		mnt_path := getEnvVariableByName( patternSecretMountPath + sec_name )
 		if mnt_path != "" {
-			log.Debugf("retrieveSecretMountPath: Found matching mount path '%s' for secret '%s'", mnt_path, sec_name)
+			log.Debugf("Found matching mount path '%s' for secret '%s'", mnt_path, sec_name)
 			return mnt_path, sec_name
 
 		}else{
-			log.Debugf("retrieveSecretMountPath: Can't find matching mount path for secret '%s'", sec_name)
+			log.Debugf("Can't find matching mount path for secret '%s'", sec_name)
 		}
 
 	}else{
-		log.Debugf("retrieveSecretMountPath: Skipping variable: %s", strings.ToLower(variable) )
+		log.Debugf("Skipping variable: %s", strings.ToLower(variable) )
 	}
 	return "", ""
 }
 //
 // function takes secret-name@AzureKeyVault and returns (secret-name, actual secret from vault)
 //
-func parseEnvKeyVaultVariable(vaultClient keyvault.BaseClient, arg string) (string, string) {
+func (injector azureSecretsInjector) parseEnvKeyVaultVariable( arg string ) (string, string) {
 
 	if strings.Contains(arg, "=") {
 		envsplit := strings.Split( arg, "=" )
 		if strings.Contains( envsplit[1], "@") {
 			vaultsplit := strings.Split( envsplit[1], "@" )
 
-			log.Debugf("parseEnvKeyVaultVariable: parsing vault service for vault '%s', with key '%s'", injector.vaultName, vaultsplit[0] )
+			log.Debugf("parsing vault service for vault '%s', with key '%s'", injector.vaultName, vaultsplit[0] )
 			if vaultsplit[0] != "" {
-				secretResp, err :=  getSecret( vaultClient, injector.vaultName, vaultsplit[0] )
+				secretResp, err :=  getSecret( injector.vaultClient, injector.vaultName, vaultsplit[0] )
 
 				if err != nil {
 					log.Errorf("%s unable to get value for secret:  %v", logPrefix, err.Error())
@@ -289,9 +291,9 @@ func parseEnvKeyVaultVariable(vaultClient keyvault.BaseClient, arg string) (stri
 					return envsplit[0] , *secretResp.Value
 				}
 			}
-			log.Infof("parseEnvKeyVaultVariable: Parsing argument value from env: %s", arg)
+			log.Infof("Parsing argument value from env: %s", arg)
 		}else{
-			log.Infof("parseEnvKeyVaultVariable: Skipping argument value from env: %s", arg)
+			log.Infof("Skipping argument value from env: %s", arg)
 			return "", ""
 		}
 	}else{
