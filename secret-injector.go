@@ -187,7 +187,7 @@ func getEnvVariableByName(variableName string) (string) {
 //
 // Function to retrive the secret from the vault based on its name
 //
-func retrieveSecret(secName) (string, error){
+func retrieveSecret(secName string) (string, error){
 	sec := ""
 	secretResp, err :=  getSecret( injector.vaultClient, injector.vaultName, secName )
 	if err != nil {
