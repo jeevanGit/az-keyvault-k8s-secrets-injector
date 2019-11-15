@@ -97,24 +97,23 @@ func main() {
 
 	environ := os.Environ()
 	for _, pair := range environ {
-
+		//
 		// Parse env variables and populate env vars from keyvault
+		//
 		envname, envvar := parseEnvKeyVaultVariable(injector.vaultClient, pair)
 		if envname != "" {
 			os.Setenv(envname , envvar)
 		}
-
+		//
 		// Parse env variables and populate files with secrets
+		//
 		mntPath, secName := retrieveSecretMountPath( pair )
 		if mntPath != "" {
 
 			// get secret based on the name
-			secret := ""
-			secretResp, err :=  getSecret( injector.vaultClient, injector.vaultName, secName )
+			secret, err := retrieveSecret(secName)
 			if err != nil {
 				log.Errorf("%s unable to get value for secret:  %v", logPrefix, err.Error())
-			}else{
-				secret = *secretResp.Value
 			}
 
 			err = generateSecretsFile( mntPath, secName, secret )
@@ -185,12 +184,24 @@ func getEnvVariableByName(variableName string) (string) {
 	}
 	return ""
 }
-
+//
+// Function to retrive the secret from the vault based on its name
+//
+func retrieveSecret(secName) (string, error){
+	sec := ""
+	secretResp, err :=  getSecret( injector.vaultClient, injector.vaultName, secName )
+	if err != nil {
+		s := fmt.Sprintf("%v", err.Error())
+		return "", errors.New(s)
+	}else{
+		sec = *secretResp.Value
+	}
+	return sec, nil
+}
 //
 // Function  creates secrets file, writes secret to it and makes file read-only
 //
 func generateSecretsFile(mntPath, secName, secret string) (error) {
-
 	secretsFile := mntPath + "/" + secName
 	_, err := os.Create( secretsFile )
 	if err != nil {
@@ -289,12 +300,16 @@ func parseEnvKeyVaultVariable(vaultClient keyvault.BaseClient, arg string) (stri
 	}
 	return "", ""
 }
-
+//
+// Low level function to get the secret from the vault based on its name
+//
 func getSecret(vaultClient keyvault.BaseClient, vaultname string, secname string) (result keyvault.SecretBundle, err error) {
 	log.Debugf("%s Making a call to:  https://%s.vault.azure.net to retrieve value for KEY: %s\n", logPrefix, vaultname, secname)
 	return vaultClient.GetSecret( context.Background(), "https://"+vaultname+".vault.azure.net", secname, "")
 }
-
+//
+// debug function
+//
 func logRequest() autorest.PrepareDecorator {
 	return func(p autorest.Preparer) autorest.Preparer {
 		return autorest.PreparerFunc(func(r *http.Request) (*http.Request, error) {
@@ -308,7 +323,9 @@ func logRequest() autorest.PrepareDecorator {
 		})
 	}
 }
-
+//
+// debug function
+//
 func logResponse() autorest.RespondDecorator {
 	return func(p autorest.Responder) autorest.Responder {
 		return autorest.ResponderFunc(func(r *http.Response) error {
