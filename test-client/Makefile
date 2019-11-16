@@ -13,16 +13,6 @@ IMAGE?=${DOCKER_ORG}/${APP}:${RELEASE}
 ENV?=DEV
 
 
-clean:
-		rm -f ./bin/${APP}
-
-build: clean
-		echo "GOPATH: " ${GOPATH}
-		CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} go build \
-			-ldflags "-s -w -X version.Release=${RELEASE} \
-			-X version.Commit=${COMMIT} -X version.BuildTime=${BUILD_TIME}" \
-			-o ./bin/${APP}
-
 run: container
 		docker stop ${APP} || true && docker rm ${APP} || true
 		docker run --name ${APP} --rm \
@@ -31,10 +21,8 @@ run: container
 push: container
 		docker push $(IMAGE)
 
-container: build
+container:
 		-docker build -t $(IMAGE) .
-		cp ./bin/${APP} ./combined
-		rm -f ./bin/${APP}
 
 .PHONY: glide
 glide:
