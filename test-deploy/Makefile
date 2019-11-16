@@ -4,7 +4,7 @@ GOOS?=linux
 GOARCH?=amd64
 PROJECT?=
 
-include vars-az.mk
+include ../vars-az.mk
 
 APP?=test-deployment
 APIVER?=v1
