@@ -61,7 +61,20 @@ In context of test client deployment, designed for the purpose of testing Secret
 		},
 ```
 
-Assuming `AzureIdentity` created with the name `app1-principal`, along with `AzureIdentityBinding` defined as
+Assuming `AzureIdentity` created with the name `app1-principal`
+
+```yaml
+apiVersion: "aadpodidentity.k8s.io/v1"
+kind: AzureIdentity
+metadata:
+  name: app1-principal
+spec:
+  type: 0
+  ResourceID: <your ManagedIdentity Resource ID>
+  ClientID: <your ManagedIdentity ClientID>
+```
+
+Along with `AzureIdentityBinding` defined as
 
 ```yaml
 apiVersion: "aadpodidentity.k8s.io/v1"
