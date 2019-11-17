@@ -167,7 +167,7 @@ cd test-client
 make push
 ```
 
-Second, build and push the test deployment-pod ,image called `test-deployment:v1alpha1`, what is does it simulates the controller that ingests init-container into your application container to set environment variables based on the secrets from the vault you specify.
+Second, build and push the test deployment-pod ,image called `test-deployment:v1alpha1`, what is does it simulates the controller (implements Kubernetes Mutating Webhook) that ingests init-container into your application container to set environment variables based on the secrets from the vault you specify.
 
 ```
 cd ../test-deploy
@@ -178,7 +178,7 @@ At this point, there should be 3 images in total: `test-client:v1alpha1`, `test-
 
 
 By looking at `fake-controller.yaml` it should be evident that it takes `<your registry>/test-deployment:v1alpha1` image and creates a pod, which contains binary `test-deployment` was built in previous step. 
-Source code of binary `test-deployment` located at [./test-deploy/main.go](./test-deploy/main.go), along with corresponding `./test-deploy/Dockerfile`
+Source code of binary `test-deployment` located at [./test-deploy/main.go](./test-deploy/main.go), along with corresponding [./test-deploy/Dockerfile](./test-deploy/Dockerfile)
 
 Next step is to execute the test deployment binary:
 
@@ -217,13 +217,13 @@ What binary `test-deployment` does is set of following steps:
 			},
 ```
 
-3. Injects init container `secret-injector-init` with image from the first step `secret-injector:v1alpha1` and it copies binary from `/usr/local/bin/` to mounted volume `/azure-keyvault/`
+3. Injects init container `secret-injector-init` with image from the first step `secret-injector:v1alpha1` and it copies binary `secret-injector` from `/usr/local/bin/` to mounted volume `/azure-keyvault/`
 
 ```golang
 			InitContainers: []apiv1.Container{
 				{
 					Name:            "secret-injector-init",
-					Image:           "securityopregistrytest.azurecr.io/secret-injector:v1alpha1",
+					Image:           "<my-registry>/secret-injector:v1alpha1",
 					Command:         []string{"sh", "-c", "cp /usr/local/bin/* /azure-keyvault/"},
 					ImagePullPolicy: apiv1.PullAlways,
 					VolumeMounts: []apiv1.VolumeMount{
@@ -243,26 +243,46 @@ What binary `test-deployment` does is set of following steps:
 						},
 					},
 				},
+			},
+```
+
+
+4. Then, it creates container named `test-client` where we run actual application [./test-client/my-application-script.sh](./test-client/my-application-script.sh)
+
+```go
+			Containers: []apiv1.Container{
 				{
-					Name:            "debug",
-					Image:           "teran/ubuntu-network-troubleshooting",
+					Name:            "test-client",
+					Image:           "<my-registry>/test-client:v1alpha1",
+					Command:         []string{"sh", "-c", "/azure-keyvault/secret-injector /my-application-script.sh"},
 					ImagePullPolicy: apiv1.PullAlways,
 					VolumeMounts: []apiv1.VolumeMount{
 						{
-							Name: "azure-keyvault-env", MountPath: "/azure-keyvault/",
+							Name:      "azure-keyvault-env",
+							MountPath: "/azure-keyvault/",
 						},
+					},
+					Env: []apiv1.EnvVar{
+						{Name: "AzureKeyVault", Value: "aks-AC0001-keyvault",},
+						{Name: "env_secret_name", Value: "secret1@AzureKeyVault",},
+						{Name: "debug", Value: "true",},
+						{Name: "SECRET_INJECTOR_SECRET_NAME_secret1", Value: "secret1",},
+						{Name: "SECRET_INJECTOR_MOUNT_PATH_secret1", Value: "/etc/secrets",},
+						{Name: "SECRET_INJECTOR_SECRET_NAME_secret2", Value: "secret1",},
+						{Name: "SECRET_INJECTOR_MOUNT_PATH_secret2", Value: "/etc/secrets",},
 					},
 				},
 			},
 ```
 
+As it shown in the code snippet above, `test-client` take a bunch of environment variables - note these variables for the following steps.
 
-4. Then, it creates container named `test-client` where we run actual application
-5. Mounts same volume `azure-keyvault-env` to `/azure-keyvault/`, hence now it can 'see' the binary from the init container
-6. And, finally, it executes the binary `secret-injector` from the init container and passes "application" as a parameter to it, as such:
+Also in this step, `test-deployment` mounts same volume `azure-keyvault-env` to `/azure-keyvault/` for `test-client` container, hence now it can 'see' the binary `secret-injector` from the init container - see step 3.
 
-```
-"sh", "-c", "/azure-keyvault/secret-injector /my-application-script.sh"
+5. And, finally, it executes the binary `secret-injector` from the init container and passes "application" as a parameter to it, as such:
+
+```go
+    Command:         []string{"sh", "-c", "/azure-keyvault/secret-injector /my-application-script.sh"},
 ```
 
 What happens in this step, the binary `secret-injector` takes environment variable `env_secret_name=secret1@azurekeyvault` and replaces value with the secret from the vault that it points to: vault's name is `AzureKeyVault` and secret's name is `secret1`. Then, the binary `secret-injector` executes the application code, in this case it's script `my-application-script.sh`, which inherits "new" environment along with secrets populated as environment variables.
