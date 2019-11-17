@@ -7,9 +7,9 @@ Repo hosts Kubernetes Environment Injector init-container to retrieve secrets/ke
 
 This project offer the component for handling Azure Key Vault Secrets in Kubernetes:
 
-* Azure Key Vault Env Injector
+* Azure Key Vault Secrets Injector
 
-The **Azure Key Vault Env Injector** (Env Injector for short) is a Kubernetes Mutating Webhook that transparently injects Azure Key Vault secrets as environment variables into programs running in containers, without touching disk or in any other way expose the actual secret content outside the program.
+The **Azure Key Vault Secrets Injector** (Secrets Injector for short) is a Kubernetes Mutating Webhook that transparently injects Azure Key Vault secrets as environment variables into programs running in containers, without touching disk or in any other way expose the actual secret content outside the program.
 
 The motivation behind this project was:
 
@@ -17,7 +17,7 @@ The motivation behind this project was:
 2. Make it simple, secure and low risk to transfer Azure Key Vault secrets into Kubernetes as native Kubernetes secrets
 3. Securely and transparently be able to inject Azure Key Vault secrets as environment variables to applications, without having to use native Kubernetes secrets
 
-Use the Env Injector if:
+Use the Secrets Injector if:
 
 * any of the [risks documented with Secrets in Kubernetes](https://kubernetes.io/docs/concepts/configuration/secret/#risks) is not acceptable
 * there are concerns about storing and exposing base64 encoded Azure Key Vault secrets as Kubernetes `Secret` resources
@@ -27,7 +27,7 @@ Use the Env Injector if:
 
 ## How it works
 
-The Env Injector is developed using a Mutating Admission Webhook that triggers just before every Pod gets created. To allow cluster administrators some control over which Pods this Webhook gets triggered for, it must be enabled per namespace using the azure-key-vault-env-injection label, like in the example below:
+The Secrets Injectoris developed using a Mutating Admission Webhook that triggers just before every Pod gets created. To allow cluster administrators some control over which Pods this Webhook gets triggered for, it must be enabled per namespace using the azure-key-vault-env-injection label, like in the example below:
 
 ```
 apiVersion: v1
@@ -38,9 +38,9 @@ metadata:
     azure-key-vault-env-injection: enabled
 ```
 
-As with the Controller, the Env Injector relies on AzureKeyVaultSecret resources to provide information about the Azure Key Vault secrets.
+As with the Controller, the Secrets Injectorrelies on AzureKeyVaultSecret resources to provide information about the Azure Key Vault secrets.
 
-The Env Injector will start processing containers containing one or more environment placeholders like below:
+The Secrets Injectorwill start processing containers containing one or more environment placeholders like below:
 
 ```
 env:
@@ -65,9 +65,9 @@ No credentials are needed for managed identity authentication. The Kubernetes cl
 
 To use custom authentication for the Env Injector, set the environment variable CUSTOM_AUTH to true.
 
-By default each Pod using the Env Injector pattern must provide their own credentials for Azure Key Vault using Authentication options below.
+By default each Pod using the Secrets Injectorpattern must provide their own credentials for Azure Key Vault using Authentication options below.
 
-To avoid that, support for a more convenient solution is added where the Azure Key Vault credentials in the Env Injector (using Authentication options below) is "forwarded" to the the Pods. This is enabled by setting the environment variable CUSTOM_AUTH_INJECT to true. Env Injector will then create a Kubernetes Secret containing the credentials and modify the Pod's env section to reference the credentials in the Secret.
+To avoid that, support for a more convenient solution is added where the Azure Key Vault credentials in the Secrets Injector(using Authentication options below) is "forwarded" to the the Pods. This is enabled by setting the environment variable CUSTOM_AUTH_INJECT to true. Secrets Injectorwill then create a Kubernetes Secret containing the credentials and modify the Pod's env section to reference the credentials in the Secret.
 
 #### Custom Authentication Options
 
