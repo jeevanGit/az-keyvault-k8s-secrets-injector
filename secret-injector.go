@@ -184,8 +184,7 @@ func main() {
 	Debug("<<<<<<< Environment BEFORE >>>>>>>>>")
 	printEnv()
 
-	environ := os.Environ()
-	for _, pair := range environ {
+	for _, pair := range os.Environ() {
 		//
 		// Parse env variables and populate env vars from keyvault
 		//
@@ -223,7 +222,7 @@ func main() {
 			Errorf("%s binary not found: %s", logPrefix, os.Args[1])
 		}
 		Infof("starting process %s %v", binary, os.Args[1:])
-		err = syscall.Exec(binary, os.Args[1:], environ)
+		err = syscall.Exec( binary, os.Args[1:], os.Environ() )
 		if err != nil {
 			Errorf("%s failed to exec process '%s': %s", logPrefix, binary, err.Error())
 		}
