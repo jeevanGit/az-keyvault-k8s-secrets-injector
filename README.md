@@ -299,7 +299,8 @@ What happens in this step:
  - the binary takes environment variable `SECRET_INJECTOR_SECRET_NAME_secret1` and follows the steps from Part 1 to retrieve the actual secret from Azure Key Vault (`AzureKeyVault`)
  - it takes variable `SECRET_INJECTOR_MOUNT_PATH_secret1` and creates read-only file `/etc/secrets/secret1` with teh content from secret `secret1`.
 
-This is secure way to make the secrets as environment variables - even if someone hacks into the pod and tries to see the manifest of it, hopping to learn the secrets from the environment, all manifest would show is "old" environment variable `env_secret_name=secret1@AzureKeyVault`.
+
+This is most secure way to make the secrets as environment variables - even in the case of event hacking into the pod to reveal teh secrets by examening the manifest of the pod, all manifest would show is "old" environment variable `env_secret_name=secret1@AzureKeyVault` etc.
 
 
 
