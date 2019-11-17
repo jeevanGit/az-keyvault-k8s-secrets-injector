@@ -150,6 +150,8 @@ To build the binaries run:
 make build
 ```
 
+This step compiles binary and places it under `./bin` directory.
+
 Then, build image `secret-injector:v1alpha1` and push it to ACR instance:
 
 ```
@@ -172,10 +174,10 @@ cd ../test-deploy
 make push
 ```
 
-At this point, there should be 3 images in total: `test-client:v1alpha1`, `test-deployment:v1alpha1` and ``
+At this point, there should be 3 images in total: `test-client:v1alpha1`, `test-deployment:v1alpha1` and `secret-injector:v1alpha1`
 
 
-From `fake-controller.yaml`, you can see it takes `<your registry>/test-deployment:v1alpha1` image and creates a pod, which containes binary `test-deployment` was built in privious step. What binary `test-deployment` does is set of steps:
+From `fake-controller.yaml`, you can see it takes `<your registry>/test-deployment:v1alpha1` image and creates a pod, which contains binary `test-deployment` was built in previous step. What binary `test-deployment` does is set of steps:
 
 1. Creates pod named `application-pod` which simulates a pod created by an application
 2. It creates empty volume `azure-keyvault-env` and mounts it to `/azure-keyvault/`
