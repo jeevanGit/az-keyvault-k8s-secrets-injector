@@ -88,10 +88,10 @@ func (injector azureSecretsInjector) retrieveSecretMountPath(variable string) (s
 		Debugf("Found matching env variable: %s", strings.ToLower(variable))
 		secName := between(strings.ToLower(variable), patternSecretName, "=") ; Debugf("Secret name: %s", secName)
 
-		mnt_path := getEnvVariableByName( patternSecretMountPath + secName)
-		if mnt_path != "" {
-			Debugf("Found matching mount path '%s' for secret '%s'", mnt_path, secName)
-			return mnt_path, secName
+		var mntPath = getEnvVariableByName(patternSecretMountPath + secName)
+		if mntPath != "" {
+			Debugf("Found matching mount path '%s' for secret '%s'", mntPath, secName)
+			return mntPath, secName
 		}else{
 			Debugf("Can't find matching mount path for secret '%s'", secName)
 		}
