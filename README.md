@@ -287,15 +287,17 @@ Also in this step, `test-deployment` mounts same volume `azure-keyvault-env` to 
 
 What happens in this step:
 
-Part 1 - setting secrets as environment variables
+**Part 1 - setting secrets as environment variables**
+
  - the binary reads environment variable `AzureKeyVault` and uses its value to set the name of Azure Key Vault, in the example above it's `aks-AC0001-keyvault`
  - takes environment variable `env_secret_name=secret1@AzureKeyVault` and retrieves the value of the secret from the vault `aks-AC0001-keyvault` and secret's name is `secret1`
  - assigned environment variable `env_secret_name` the value of the secret `secret1`
  - then, it executes the application code (in this case it's script `my-application-script.sh`) which inherits "new" environment along with secrets populated as environment variables.
 
-Part 2 - populating the secrets as a files
+**Part 2 - populating the secrets as a files**
+
  - the binary takes environment variable `SECRET_INJECTOR_SECRET_NAME_secret1` and follows the steps from Part 1 to retrieve the actual secret from Azure Key Vault (`AzureKeyVault`)
- - 
+ - it takes variable `SECRET_INJECTOR_MOUNT_PATH_secret1` and creates read-only file `/etc/secrets/secret1` with teh content from secret `secret1`.
 
 This is secure way to make the secrets as environment variables - even if someone hacks into the pod and tries to see the manifest of it, hopping to learn the secrets from the environment, all manifest would show is "old" environment variable `env_secret_name=secret1@AzureKeyVault`.
 
