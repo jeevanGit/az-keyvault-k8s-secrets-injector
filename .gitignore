@@ -1,6 +1,5 @@
 tmp.*
 vars*.mk
-service-config-data
 Dockerfile
 secret.yml
 tmp-secrets.yaml
@@ -16,3 +15,6 @@ vendor/*
 creds.json
 hook.json
 scripts/hook.json
+./bin/secret-injector
+/test-deploy/config
+/bin/secret-injector
