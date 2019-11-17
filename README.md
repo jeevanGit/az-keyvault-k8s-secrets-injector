@@ -188,7 +188,8 @@ make push
 
 # How to use it
 
-First, lets build and push the test client - image `test-client:v1alpha1`
+Assuming all instructions from previous section 'Build Environment Injector' are completed.
+Lets by building and pushing the test client - image `test-client:v1alpha1`
 
 ```
 cd test-client
