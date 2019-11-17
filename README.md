@@ -5,6 +5,28 @@ Repo hosts Kubernetes Environment Injector init-container to retrieve secrets/ke
 
 ## Overview
 
+This project offer the component for handling Azure Key Vault Secrets in Kubernetes:
+
+* Azure Key Vault Env Injector
+
+The **Azure Key Vault Env Injector** (Env Injector for short) is a Kubernetes Mutating Webhook that transparently injects Azure Key Vault secrets as environment variables into programs running in containers, without touching disk or in any other way expose the actual secret content outside the program.
+
+The motivation behind this project was:
+
+1. Avoid a direct program dependency on Azure Key Vault for getting secrets, and adhere to the 12 Factor App principle for configuration (https://12factor.net/config)
+2. Make it simple, secure and low risk to transfer Azure Key Vault secrets into Kubernetes as native Kubernetes secrets
+3. Securely and transparently be able to inject Azure Key Vault secrets as environment variables to applications, without having to use native Kubernetes secrets
+
+Use the Env Injector if:
+
+* any of the [risks documented with Secrets in Kubernetes](https://kubernetes.io/docs/concepts/configuration/secret/#risks) is not acceptable
+* there are concerns about storing and exposing base64 encoded Azure Key Vault secrets as Kubernetes `Secret` resources
+* preventing Kubernetes users to gain access to Azure Key Vault secret content is important
+* the application running in the container support getting secrets as environment variables
+* secret environment variable values should not be revealed to Kubernetes resources like Pod specs, stored on disks, visible in logs or exposed in any way other than in-memory for the application
+
+## How it works
+
 The Env Injector is developed using a Mutating Admission Webhook that triggers just before every Pod gets created. To allow cluster administrators some control over which Pods this Webhook gets triggered for, it must be enabled per namespace using the azure-key-vault-env-injection label, like in the example below:
 
 ```
@@ -38,6 +60,33 @@ When the original container starts it will execute the azure-keyvault-env comman
 ## Authentication
 
 No credentials are needed for managed identity authentication. The Kubernetes cluster must be running in Azure and the aad-pod-identity controller must be installed. A AzureIdentity and AzureIdentityBinding must be defined. See https://github.com/Azure/aad-pod-identity for details.
+
+### Custom Authentication for Env Injector
+
+To use custom authentication for the Env Injector, set the environment variable CUSTOM_AUTH to true.
+
+By default each Pod using the Env Injector pattern must provide their own credentials for Azure Key Vault using Authentication options below.
+
+To avoid that, support for a more convenient solution is added where the Azure Key Vault credentials in the Env Injector (using Authentication options below) is "forwarded" to the the Pods. This is enabled by setting the environment variable CUSTOM_AUTH_INJECT to true. Env Injector will then create a Kubernetes Secret containing the credentials and modify the Pod's env section to reference the credentials in the Secret.
+
+#### Custom Authentication Options
+
+The following authentication options are available:
+
+| Authentication type |	Environment variable |	Description |
+| ------------------- | -------------------- | ------------ |
+| Managed identities for Azure resources (used to be MSI) | | No credentials are needed for managed identity authentication. The Kubernetes cluster must be running in Azure and the `aad-pod-identity` controller must be installed. A `AzureIdentity` and `AzureIdentityBinding` must be defined. See https://github.com/Azure/aad-pod-identity for details. |
+| Client credentials 	| AZURE_TENANT_ID 	   | The ID for the Active Directory tenant that the service principal belongs to. |
+|                     |	AZURE_CLIENT_ID 	   | The name or ID of the service principal. |
+|                     |	AZURE_CLIENT_SECRET  | The secret associated with the service principal. |
+| Certificate 	      | AZURE_TENANT_ID      | The ID for the Active Directory tenant that the certificate is registered with. |
+|                     | AZURE_CLIENT_ID      | The application client ID associated with the certificate. |
+|                     | AZURE_CERTIFICATE_PATH | The path to the client certificate file. |
+|                     | AZURE_CERTIFICATE_PASSWORD | The password for the client certificate. |
+| Username/Password   | AZURE_TENANT_ID | The ID for the Active Directory tenant that the user belongs to. |
+|                     | AZURE_CLIENT_ID | The application client ID. |
+|                     | AZURE_USERNAME  | The username to sign in with.
+|                     | AZURE_PASSWORD  | The password to sign in with. |
 
 
 ## Authorization
