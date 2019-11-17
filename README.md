@@ -103,16 +103,23 @@ Azure Key Vault Secrets:
 az keyvault set-policy -n <azure key vault name> --secret-permissions get --spn <service principal id> --subscription <azure subscription>
 ```
 
-Azure Key Vault Certificates:
-
-```
-az keyvault set-policy -n <azure key vault name> --certificate-permissions get --spn <service principal id> --subscription <azure subscription>
-```
-
 Azure Key Vault Keys:
 
 ```
 az keyvault set-policy -n <azure key vault name> --key-permissions get --spn <service principal id> --subscription <azure subscription>
+```
+
+**Note:**
+
+To allow cluster administrators some control over which Pods this Webhook gets triggered for, it must be enabled per namespace using the `azure-key-vault-env-injection` label, like in the example below:
+
+```
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: akv-test
+  labels:
+    azure-key-vault-env-injection: enabled
 ```
 
 
@@ -127,7 +134,7 @@ DOCKER_ORG?=<your acr name>.azurecr.io
 Also, in `Makefile`, set variables `APP` and `RELEASE`
 
 ```
-APP?=env-injector
+APP?=secret-injector
 RELEASE?=v1alpha1
 ```
 
@@ -143,13 +150,13 @@ To build the binaries run:
 make build
 ```
 
-Then, build image and push it to ACR instance:
+Then, build image `secret-injector:v1alpha1` and push it to ACR instance:
 
 ```
 make push
 ```
 
-## Build test components
+## How to use it
 
 First, lets build and push the test client - image `test-client:v1alpha1`
 
@@ -160,33 +167,41 @@ make push
 
 Second, build and push the test deployment-pod ,image called `test-deployment:v1alpha1`, what is does it simulates the controller that ingests init-container into your application container to set environment variables based on the secrets from the vault you specify.
 
-
 ```
 cd ../test-deploy
 make push
 ```
 
+At this point, there should be 3 images in total: `test-client:v1alpha1`, `test-deployment:v1alpha1` and ``
+
+
 From `fake-controller.yaml`, you can see it takes `<your registry>/test-deployment:v1alpha1` image and creates a pod, which containes binary `test-deployment` was built in privious step. What binary `test-deployment` does is set of steps:
 
 1. Creates pod named `application-pod` which simulates a pod created by an application
 2. It creates empty volume `azure-keyvault-env` and mounts it to `/azure-keyvault/`
-3. Creates init container `env-injector-init` with image from the first step `env-injector:v1alpha1` and it copies binary from `/usr/local/bin/` to mounted volume `/azure-keyvault/`
+3. Creates init container `secret-injector-init` with image from the first step `secret-injector:v1alpha1` and it copies binary from `/usr/local/bin/` to mounted volume `/azure-keyvault/`
+
 ```
 cp /usr/local/bin/* /azure-keyvault/
 ```
+
 4. Then, it creates container named `test-client` where we run actual application
 5. Mounts same volume `azure-keyvault-env` to `/azure-keyvault/`, hence now it can 'see' the binary from the init container
-6. And, finally, it executes the binary `env-injector` from the init container and passes "application" as a parameter to it, as such:
+6. And, finally, it executes the binary `secret-injector` from the init container and passes "application" as a parameter to it, as such:
+
 ```
-"sh", "-c", "/azure-keyvault/env-injector /my-application-script.sh"
+"sh", "-c", "/azure-keyvault/secret-injector /my-application-script.sh"
 ```
 
-What happens in this step, the binary `env-injector` takes environment variable `env_secret_name=secret1@AzureKeyVault` and replaces value with the secret from the vault that it points to: vault's name is `AzureKeyVault` and secret's name is `secret1`. Then, the binary `env-injector` executes the application code, in this case it's script `my-application-script.sh`, which inherits "new" environment along with secrets populated as environment variables.
+What happens in this step, the binary `secret-injector` takes environment variable `env_secret_name=secret1@azurekeyvault` and replaces value with the secret from the vault that it points to: vault's name is `AzureKeyVault` and secret's name is `secret1`. Then, the binary `secret-injector` executes the application code, in this case it's script `my-application-script.sh`, which inherits "new" environment along with secrets populated as environment variables.
 This is secure way to make the secrets as environment variables - even if someone hacks into the pod and tries to see the manifest of it, hopping to learn the secrets from the environment, all manifest would show is "old" environment variable `env_secret_name=secret1@AzureKeyVault`.
 
 
 
 
+## Credits
+
+Credit goes to Banzai Cloud for coming up with the [original idea](https://banzaicloud.com/blog/inject-secrets-into-pods-vault/) of environment injection for their [bank-vaults](https://github.com/banzaicloud/bank-vaults) solution, which they use to inject Hashicorp Vault secrets into Pods.
 
 
 ---
