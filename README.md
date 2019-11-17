@@ -39,20 +39,48 @@ env:
 ...
 ```
 
-It will start by injecting a init-container into the Pod. This init-container copies over the azure-keyvault-env executable to a share volume between the init-container and the original container. It then changes either the CMD or ENTRYPOINT, depending on which was used by the original container, to use the azure-keyvault-env executable instead, and pass on the "old" command as parameters to this new executable. The init-container will then complete and the original container will start.
+It will start by injecting a init-container into the Pod. This init-container copies over the `secret-injector` executable to a share volume between the init-container and the original container. It then changes either the CMD or ENTRYPOINT, depending on which was used by the original container, to use the `secret-injector` executable instead, and pass on the "old" command as parameters to this new executable. The init-container will then complete and the original container will start.
 
-When the original container starts it will execute the azure-keyvault-env command which will download any Azure Key Vault secrets, identified by the environment placeholders above. The remaining step is for azure-keyvault-env to execute the original command and params, pass on the updated environment variables with real secret values. This way all secrets gets injected transparently in-memory during container startup, and not reveal any secret content to the container spec, disk or logs.
+When the original container starts it will execute the `secret-injector` command which will download any Azure Key Vault secrets, identified by the environment placeholders above. The remaining step is for `secret-injector` to execute the original command and params, pass on the updated environment variables with real secret values. This way all secrets gets injected transparently in-memory during container startup, and not reveal any secret content to the container spec, disk or logs.
 
 
 ## Authentication
 
-No credentials are needed for managed identity authentication. The Kubernetes cluster must be running in Azure and the aad-pod-identity controller must be installed. A AzureIdentity and AzureIdentityBinding must be defined. See https://github.com/Azure/aad-pod-identity for details.
+No credentials are needed for managed identity authentication. The Kubernetes cluster must be running in Azure and the aad-pod-identity controller must be installed. A AzureIdentity and AzureIdentityBinding must be defined. 
+See https://github.com/Azure/aad-pod-identity for details.
 
-### Custom Authentication for Env Injector
+In context of test client deployment, designed for the purpose of testing Secrets Injector, it offers pre-build labels for aad-pod-identity selector
 
-To use custom authentication for the Env Injector, set the environment variable CUSTOM_AUTH to true.
+```go
+	podsClient, pod := clientset.CoreV1().Pods(apiv1.NamespaceDefault), &apiv1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: controllerPodName,
+			Labels: map[string]string{
+				"aadpodidbinding": "pod-selector-label",
+			},
+		},
+```
 
-By default each Pod using the Secrets Injectorpattern must provide their own credentials for Azure Key Vault using Authentication options below.
+Assuming `AzureIdentity` created with the name `app1-principal`, along with `AzureIdentityBinding` defined as
+
+```yaml
+apiVersion: "aadpodidentity.k8s.io/v1"
+kind: AzureIdentityBinding
+metadata:
+  name: app1-principal-binding
+spec:
+  AzureIdentity: app1-principal
+  Selector:  pod-selector-label
+```
+
+It is evident that only pods label as `aadpodidbinding=pod-selector-label` would be assigned with AAD Pod Identity and have access to selected Key Vault.
+
+
+### Custom Authentication for Secrets Injector
+
+To use custom authentication for the Secrets Injector, set the environment variable CUSTOM_AUTH to true.
+
+By default each Pod using the Secrets Injector pattern must provide their own credentials for Azure Key Vault using Authentication options below.
 
 To avoid that, support for a more convenient solution is added where the Azure Key Vault credentials in the Secrets Injector(using Authentication options below) is "forwarded" to the the Pods. This is enabled by setting the environment variable CUSTOM_AUTH_INJECT to true. Secrets Injectorwill then create a Kubernetes Secret containing the credentials and modify the Pod's env section to reference the credentials in the Secret.
 
@@ -189,12 +217,12 @@ What binary `test-deployment` does is set of following steps:
 
 ```
 
-2. It creates empty volume `azure-keyvault-env` and mounts it to `/azure-keyvault/`
+2. It creates empty volume ``secret-injector`` and mounts it to `/azure-keyvault/`
 
 ```golang
 			Volumes: []apiv1.Volume{
 				{
-					Name: "azure-keyvault-env",
+					Name: "`secret-injector`",
 					VolumeSource: apiv1.VolumeSource{
 						EmptyDir: &apiv1.EmptyDirVolumeSource{
 							Medium: apiv1.StorageMediumMemory,
@@ -215,7 +243,7 @@ What binary `test-deployment` does is set of following steps:
 					ImagePullPolicy: apiv1.PullAlways,
 					VolumeMounts: []apiv1.VolumeMount{
 						{
-							Name: "azure-keyvault-env", MountPath: "/azure-keyvault/",
+							Name: "`secret-injector`", MountPath: "/azure-keyvault/",
 						},
 					},
 					Env: []apiv1.EnvVar{
@@ -245,7 +273,7 @@ What binary `test-deployment` does is set of following steps:
 					ImagePullPolicy: apiv1.PullAlways,
 					VolumeMounts: []apiv1.VolumeMount{
 						{
-							Name:      "azure-keyvault-env",
+							Name:      "`secret-injector`",
 							MountPath: "/azure-keyvault/",
 						},
 					},
@@ -264,7 +292,7 @@ What binary `test-deployment` does is set of following steps:
 
 As it shown in the code snippet above, `test-client` take a bunch of environment variables - note these variables for the following steps.
 
-Also in this step, `test-deployment` mounts same volume `azure-keyvault-env` to `/azure-keyvault/` for `test-client` container, hence now it can 'see' the binary `secret-injector` from the init container - see step 3.
+Also in this step, `test-deployment` mounts same volume ``secret-injector`` to `/azure-keyvault/` for `test-client` container, hence now it can 'see' the binary `secret-injector` from the init container - see step 3.
 
 5. And, finally, it executes the binary `secret-injector` from the init container and passes "application" as a parameter to it, as such:
 
