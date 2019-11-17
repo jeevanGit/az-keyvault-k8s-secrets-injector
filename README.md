@@ -118,13 +118,13 @@ az keyvault set-policy -n <azure key vault name> --key-permissions get --spn <se
 
 ## Build Environment Injector
 
-Make sure you put together `vars-az.mk` file as such:
+Make sure you create `vars-az.mk` file and define `DOCKER_ORG`:
 
 ```
 DOCKER_ORG?=<your acr name>.azurecr.io
 ```
 
-In `Makefile`, set variables
+Also, in `Makefile`, set variables `APP` and `RELEASE`
 
 ```
 APP?=env-injector
