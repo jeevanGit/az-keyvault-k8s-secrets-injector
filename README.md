@@ -1,6 +1,6 @@
-# azure-keyvault-service
+# Azure Keyvault Secrets Injector service
 
-Repo hosts Kubernetes Environment Injector init-container to retrieve secrets/keys from Azure KeyVault and populate them in form of environment variables for your application/container.
+Repo hosts Kubernetes Secrets Injector init-container to retrieve secrets/keys from Azure KeyVault and populate them in form of environment variables as well as secrets files for your application/container.
 
 
 ## Overview
