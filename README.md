@@ -177,15 +177,85 @@ make push
 At this point, there should be 3 images in total: `test-client:v1alpha1`, `test-deployment:v1alpha1` and `secret-injector:v1alpha1`
 
 
-By looking at `fake-controller.yaml` it is evident, it takes `<your registry>/test-deployment:v1alpha1` image and creates a pod, which contains binary `test-deployment` was built in previous step. What binary `test-deployment` does is set of steps:
+By looking at `fake-controller.yaml` it is evident, it takes `<your registry>/test-deployment:v1alpha1` image and creates a pod, which contains binary `test-deployment` was built in previous step. 
+Source code of binary `test-deployment` located at `./test-deploy/main.go`, along with corresponding `./test-deploy/Dockerfile`
+
+Next step is to execute the test deployment binary:
+
+```bash
+kubectl exec -it fake-controller -- /usr/local/bin/test-deployment
+```
+
+What binary `test-deployment` does is set of following steps:
 
 1. Creates pod named `application-pod` which simulates a pod created by an application
-2. It creates empty volume `azure-keyvault-env` and mounts it to `/azure-keyvault/`
-3. Creates init container `secret-injector-init` with image from the first step `secret-injector:v1alpha1` and it copies binary from `/usr/local/bin/` to mounted volume `/azure-keyvault/`
+
+```golang
+	podsClient, pod := clientset.CoreV1().Pods(apiv1.NamespaceDefault), &apiv1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: controllerPodName,
+			Labels: map[string]string{
+				"aadpodidbinding": "pod-selector-label",
+			},
+		},
+...
 
 ```
-cp /usr/local/bin/* /azure-keyvault/
+
+2. It creates empty volume `azure-keyvault-env` and mounts it to `/azure-keyvault/`
+
+```golang
+			Volumes: []apiv1.Volume{
+				{
+					Name: "azure-keyvault-env",
+					VolumeSource: apiv1.VolumeSource{
+						EmptyDir: &apiv1.EmptyDirVolumeSource{
+							Medium: apiv1.StorageMediumMemory,
+						},
+					},
+				},
+			},
 ```
+
+3. Injects init container `secret-injector-init` with image from the first step `secret-injector:v1alpha1` and it copies binary from `/usr/local/bin/` to mounted volume `/azure-keyvault/`
+
+```golang
+			InitContainers: []apiv1.Container{
+				{
+					Name:            "secret-injector-init",
+					Image:           "securityopregistrytest.azurecr.io/secret-injector:v1alpha1",
+					Command:         []string{"sh", "-c", "cp /usr/local/bin/* /azure-keyvault/"},
+					ImagePullPolicy: apiv1.PullAlways,
+					VolumeMounts: []apiv1.VolumeMount{
+						{
+							Name: "azure-keyvault-env", MountPath: "/azure-keyvault/",
+						},
+					},
+					Env: []apiv1.EnvVar{
+						{
+							Name: "AzureKeyVault", Value: "aks-AC0001-keyvault",
+						},
+						{
+							Name: "env_secret_name", Value: "secret1@AzureKeyVault",
+						},
+						{
+							Name: "debug", Value: "true",
+						},
+					},
+				},
+				{
+					Name:            "debug",
+					Image:           "teran/ubuntu-network-troubleshooting",
+					ImagePullPolicy: apiv1.PullAlways,
+					VolumeMounts: []apiv1.VolumeMount{
+						{
+							Name: "azure-keyvault-env", MountPath: "/azure-keyvault/",
+						},
+					},
+				},
+			},
+```
+
 
 4. Then, it creates container named `test-client` where we run actual application
 5. Mounts same volume `azure-keyvault-env` to `/azure-keyvault/`, hence now it can 'see' the binary from the init container
