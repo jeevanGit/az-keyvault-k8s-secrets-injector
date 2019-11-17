@@ -14,33 +14,20 @@ The **Azure Key Vault Secrets Injector** (Secrets Injector for short) is a Kuber
 The motivation behind this project was:
 
 1. Avoid a direct program dependency on Azure Key Vault for getting secrets, and adhere to the 12 Factor App principle for configuration (https://12factor.net/config)
-2. Make it simple, secure and low risk to transfer Azure Key Vault secrets into Kubernetes as native Kubernetes secrets
-3. Securely and transparently be able to inject Azure Key Vault secrets as environment variables to applications, without having to use native Kubernetes secrets
+2. Make it simple, secure and low risk to transfer Azure Key Vault secrets into Kubernetes as native Kubernetes secrets.
+3. Securely and transparently be able to inject Azure Key Vault secrets as files and environment variables to applications, without having to use native Kubernetes secrets.
 
 Use the Secrets Injector if:
 
 * any of the [risks documented with Secrets in Kubernetes](https://kubernetes.io/docs/concepts/configuration/secret/#risks) is not acceptable
 * there are concerns about storing and exposing base64 encoded Azure Key Vault secrets as Kubernetes `Secret` resources
 * preventing Kubernetes users to gain access to Azure Key Vault secret content is important
-* the application running in the container support getting secrets as environment variables
+* the application running in the container support getting secrets as environment variables and as a files
 * secret environment variable values should not be revealed to Kubernetes resources like Pod specs, stored on disks, visible in logs or exposed in any way other than in-memory for the application
 
 ## How it works
 
-The Secrets Injectoris developed using a Mutating Admission Webhook that triggers just before every Pod gets created. To allow cluster administrators some control over which Pods this Webhook gets triggered for, it must be enabled per namespace using the azure-key-vault-env-injection label, like in the example below:
-
-```
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: akv-test
-  labels:
-    azure-key-vault-env-injection: enabled
-```
-
-As with the Controller, the Secrets Injectorrelies on AzureKeyVaultSecret resources to provide information about the Azure Key Vault secrets.
-
-The Secrets Injectorwill start processing containers containing one or more environment placeholders like below:
+The Secrets Injector will start processing containers containing one or more environment placeholders like below:
 
 ```
 env:
