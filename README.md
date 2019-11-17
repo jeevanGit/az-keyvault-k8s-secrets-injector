@@ -177,8 +177,8 @@ make push
 At this point, there should be 3 images in total: `test-client:v1alpha1`, `test-deployment:v1alpha1` and `secret-injector:v1alpha1`
 
 
-By looking at `fake-controller.yaml` it is evident, it takes `<your registry>/test-deployment:v1alpha1` image and creates a pod, which contains binary `test-deployment` was built in previous step. 
-Source code of binary `test-deployment` located at `./test-deploy/main.go`, along with corresponding `./test-deploy/Dockerfile`
+By looking at `fake-controller.yaml` it should be evident that it takes `<your registry>/test-deployment:v1alpha1` image and creates a pod, which contains binary `test-deployment` was built in previous step. 
+Source code of binary `test-deployment` located at [./test-deploy/main.go](./test-deploy/main.go), along with corresponding `./test-deploy/Dockerfile`
 
 Next step is to execute the test deployment binary:
 
