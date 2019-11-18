@@ -38,105 +38,100 @@ func main() {
 		panic(err)
 	}
 
-  podsClient := clientset.CoreV1().Pods(apiv1.NamespaceDefault)
-  pod := &apiv1.Pod{
-        ObjectMeta: metav1.ObjectMeta{
-    			Name: controllerPodName,
-          Labels: map[string]string{
-						"aadpodidbinding": "pod-selector-label",
-					},
-    		},
-				Spec: apiv1.PodSpec{
-          InitContainers: []apiv1.Container{
+	podsClient, pod := clientset.CoreV1().Pods(apiv1.NamespaceDefault), &apiv1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: controllerPodName,
+			Labels: map[string]string{
+				"aadpodidbinding": "pod-selector-label",
+			},
+		},
+		Spec: apiv1.PodSpec{
+			InitContainers: []apiv1.Container{
+				{
+					Name:            "secret-injector-init",
+					Image:           "securityopregistrytest.azurecr.io/secret-injector:v1alpha1",
+					Command:         []string{"sh", "-c", "cp /usr/local/bin/* /azure-keyvault/"},
+					ImagePullPolicy: apiv1.PullAlways,
+					VolumeMounts: []apiv1.VolumeMount{
 						{
-							Name:  "secret-injector-init",
-							Image: "securityopregistrytest.azurecr.io/secret-injector:v1alpha1",
-              Command: []string{ "sh", "-c", "cp /usr/local/bin/* /azure-keyvault/" },
-              ImagePullPolicy: apiv1.PullAlways,
-              VolumeMounts: []apiv1.VolumeMount{
-          			{
-          				Name: "azure-keyvault-env", MountPath: "/azure-keyvault/",
-          			},
-          		},
-              Env: []apiv1.EnvVar{
-                {
-                  Name: "AzureKeyVault", Value: "aks-AC0001-keyvault",
-                },
-                {
-                  Name: "env_secret_name", Value: "secret1@AzureKeyVault",
-                },
-                {
-                  Name: "debug", Value: "true",
-                },
-              },
+							Name: "azure-keyvault-env", MountPath: "/azure-keyvault/",
 						},
-            {
-							Name:  "debug",
-							Image: "teran/ubuntu-network-troubleshooting",
-              ImagePullPolicy: apiv1.PullAlways,
-              VolumeMounts: []apiv1.VolumeMount{
-          			{
-          				Name: "azure-keyvault-env", MountPath: "/azure-keyvault/",
-          			},
-          		},
-
-						},
-
 					},
-					Containers: []apiv1.Container{
+					Env: []apiv1.EnvVar{
 						{
-							Name:  "test-client",
-							Image: "securityopregistrytest.azurecr.io/test-client:v1alpha1",
-              Command: []string{ "sh", "-c", "/azure-keyvault/secret-injector /my-application-script.sh" },
-              ImagePullPolicy: apiv1.PullAlways,
-              VolumeMounts: []apiv1.VolumeMount{
-          			{
-          				Name:      "azure-keyvault-env",
-          				MountPath: "/azure-keyvault/",
-          			},
-          		},
-              Env: []apiv1.EnvVar{
-                { Name: "AzureKeyVault", Value: "aks-AC0001-keyvault",  },
-                { Name: "env_secret_name", Value: "secret1@AzureKeyVault", },
-                { Name: "debug", Value: "true", },
-								{ Name: "SECRET_INJECTOR_SECRET_NAME_secret1", Value: "secret1", },
-								{ Name: "SECRET_INJECTOR_MOUNT_PATH_secret1", Value: "/etc/secrets", },
-								{ Name: "SECRET_INJECTOR_SECRET_NAME_secret2", Value: "secret1", },
-								{ Name: "SECRET_INJECTOR_MOUNT_PATH_secret2", Value: "/etc/secrets", },
-              },
-
-            },
+							Name: "AzureKeyVault", Value: "aks-AC0001-keyvault",
+						},
+						{
+							Name: "env_secret_name", Value: "secret1@AzureKeyVault",
+						},
+						{
+							Name: "debug", Value: "true",
+						},
 					},
-
-          Volumes: []apiv1.Volume{
-            {
-              Name: "azure-keyvault-env",
-              VolumeSource: apiv1.VolumeSource{
-                EmptyDir: &apiv1.EmptyDirVolumeSource{
-                  Medium: apiv1.StorageMediumMemory,
-                },
-              },
-            },
-          },
-
 				},
-      }
+				{
+					Name:            "debug",
+					Image:           "teran/ubuntu-network-troubleshooting",
+					ImagePullPolicy: apiv1.PullAlways,
+					VolumeMounts: []apiv1.VolumeMount{
+						{
+							Name: "azure-keyvault-env", MountPath: "/azure-keyvault/",
+						},
+					},
+				},
+			},
+			Containers: []apiv1.Container{
+				{
+					Name:            "test-client",
+					Image:           "securityopregistrytest.azurecr.io/test-client:v1alpha1",
+					Command:         []string{"sh", "-c", "/azure-keyvault/secret-injector /my-application-script.sh"},
+					ImagePullPolicy: apiv1.PullAlways,
+					VolumeMounts: []apiv1.VolumeMount{
+						{
+							Name:      "azure-keyvault-env",
+							MountPath: "/azure-keyvault/",
+						},
+					},
+					Env: []apiv1.EnvVar{
+						{Name: "AzureKeyVault", Value: "aks-AC0001-keyvault",},
+						{Name: "env_secret_name", Value: "secret1@AzureKeyVault",},
+						{Name: "debug", Value: "true",},
+						{Name: "SECRET_INJECTOR_SECRET_NAME_1", Value: "secret1",},
+						{Name: "SECRET_INJECTOR_MOUNT_PATH_1", Value: "/etc/secrets",},
+						{Name: "SECRET_INJECTOR_SECRET_NAME_secret2", Value: "secret1",},
+						{Name: "SECRET_INJECTOR_MOUNT_PATH_secret2", Value: "/etc/secrets",},
+					},
+				},
+			},
+
+			Volumes: []apiv1.Volume{
+				{
+					Name: "azure-keyvault-env",
+					VolumeSource: apiv1.VolumeSource{
+						EmptyDir: &apiv1.EmptyDirVolumeSource{
+							Medium: apiv1.StorageMediumMemory,
+						},
+					},
+				},
+			},
+		},
+	}
 
 	// Create Deployment
 	fmt.Println("Creating Pod...")
-  result_pod, err := podsClient.Create(pod)
+	result_pod, err := podsClient.Create(pod)
 	if err != nil {
 
-    fmt.Println(err)
+		fmt.Println(err)
 
-    fmt.Println("Trying to Delete Pod...")
-  	deletePolicy := metav1.DeletePropagationForeground
-  	if err := podsClient.Delete(controllerPodName, &metav1.DeleteOptions{
-  		PropagationPolicy: &deletePolicy,
-  	}); err != nil {
-  		panic(err)
-  	}
-  	fmt.Println("Deleted Pod.")
+		fmt.Println("Trying to Delete Pod...")
+		deletePolicy := metav1.DeletePropagationForeground
+		if err := podsClient.Delete(controllerPodName, &metav1.DeleteOptions{
+			PropagationPolicy: &deletePolicy,
+		}); err != nil {
+			panic(err)
+		}
+		fmt.Println("Deleted Pod.")
 
 	}
 	fmt.Printf("Created pod %q.\n", result_pod.GetObjectMeta().GetName())
@@ -154,7 +149,7 @@ func main() {
 
 	// Delete Deployment
 	prompt()
-  fmt.Println("Deleting Pod...")
+  	fmt.Println("Deleting Pod...")
 	deletePolicy := metav1.DeletePropagationForeground
 	if err := podsClient.Delete(controllerPodName, &metav1.DeleteOptions{
 		PropagationPolicy: &deletePolicy,
