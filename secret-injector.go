@@ -150,8 +150,10 @@ func (self *SecretVaultVariable) parse(envVar string) error {
 		s := fmt.Sprintf("Error: desired pattern not found in %s ", envVar)
 		return errors.New(s)
 	}
+	if strings.Count(envVar, "=") > 1 { s := fmt.Sprintf("Error: incorrect usage of `=` in %s ", envVar); return errors.New(s) }
 	envVarSplit := strings.Split(envVar, "=")
 	self.envVarName = envVarSplit[0]
+	if strings.Count(envVar, "@") > 1 { s := fmt.Sprintf("Error: incorrect usage of `@ in %s ", envVar); return errors.New(s) }
 	secNameSplit := strings.Split(envVarSplit[1], "@")
 	self.secName = secNameSplit[0]
 	self.vaultName = secNameSplit[1]
@@ -186,9 +188,9 @@ func (injector azureSecretsInjector) parseEnvKeyVaultVariable(arg string) (strin
 	var secName string
 
 	if (*SecretVaultVariable)(nil).detectSecretVaultPattern(arg) == true {
-		svv := (*SecretVaultVariable)(nil).importFromEnvVariable(arg)
-		if svv.isValid == false {
-			Errorf("%s unable to get value for secret %s from vault %s. Error:  %v", logPrefix, secName, injector.vaultName, err.Error())
+		svv, err := (*SecretVaultVariable)(nil).importFromEnvVariable( arg )
+		if err != nil {
+			Errorf("%s unable parse env variable '%s'. Error:  %v", logPrefix, arg, err.Error())
 			return "", ""
 		}
 		envVarSplit := strings.Split(arg, "=")
