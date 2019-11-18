@@ -86,22 +86,28 @@ func (injector azureSecretsInjector) retrieveSecret(secName string) (string, err
 // function takes env variable in form "name=value" and looks for pattern (patternSecretName) to match
 // if matches, extracts the name of the secret
 // than, finds matching mount path for given secret name
-// return value: (mount path varible name , actual mount path, secret name)
+// return value: (mount path variable name , actual mount path, secret name)
 //
 func (injector azureSecretsInjector) retrieveSecretMountPath(variable string) (string, string) {
-	if strings.Contains(strings.ToLower(variable), patternSecretName) {
 
+	if strings.Contains( strings.ToLower(variable), patternSecretName) {
+		var secName string
 		Debugf("Found matching env variable: %s", strings.ToLower(variable))
-		secName := between(strings.ToLower(variable), patternSecretName, "=")
-		Debugf("Secret name: %s", secName)
 
-		var mntPath = getEnvVariableByName(patternSecretMountPath + secName)
+		secSeq := between( strings.ToLower(variable), patternSecretName, "=")
+		split := strings.Split( strings.ToLower(variable), "=" )
+		if split[1] != "" {
+			secName = split[1]
+		}
+
+		var mntPath = getEnvVariableByName( patternSecretMountPath + secSeq )
 		if mntPath != "" {
 			Debugf("Found matching mount path '%s' for secret '%s'", mntPath, secName)
 			return mntPath, secName
 		} else {
 			Debugf("Can't find matching mount path for secret '%s'", secName)
 		}
+		Debugf("Injecting file-based secret : %s to file %s ", secName, mntPath)
 
 	} else {
 		Debugf("Skipping variable: %s", strings.ToLower(variable))
@@ -114,28 +120,33 @@ func (injector azureSecretsInjector) retrieveSecretMountPath(variable string) (s
 //
 func (injector azureSecretsInjector) parseEnvKeyVaultVariable(arg string) (string, string) {
 
-	if strings.Contains(arg, "=") {
-		envsplit := strings.Split(arg, "=")
-		if strings.Contains(envsplit[1], "@") {
-			vaultsplit := strings.Split(envsplit[1], "@")
+	var secName string
 
-			Debugf("parsing vault service for vault '%s', with key '%s'", injector.vaultName, vaultsplit[0])
-			if vaultsplit[0] != "" {
-				secretResp, err := getSecret(injector.vaultClient, injector.vaultName, vaultsplit[0])
+	if strings.Contains(arg, "=") && strings.Contains(arg, "@") {
+		envVarSplit := strings.Split(arg, "=")
 
+		if strings.Contains(envVarSplit[1], "@") { // detected explicate assigment of vault
+			tmp := strings.Split( string(envVarSplit[1]), "@" )
+			secName = tmp[0]
+			Infof("Explicit Vault assigment detected : %s", arg)
+		} else {
+			Infof("Warning: Implicit Vault assigment detected : %s", arg)
+			secName = envVarSplit[1]
+		}
+
+		Debugf("engaging vault service for vault '%s', with key '%s'", injector.vaultName, secName )
+		if secName != "" {
+				secretResp, err := getSecret(injector.vaultClient, injector.vaultName, secName )
 				if err != nil {
-					Errorf("%s unable to get value for secret:  %v", logPrefix, err.Error())
+					Errorf("%s unable to get value for secret %s from vault %s. Error:  %v", logPrefix, secName, injector.vaultName, err.Error() )
 					return "", ""
 				} else {
 					Debugf(">>> secretResp.Value: %s", *secretResp.Value)
-					return envsplit[0], *secretResp.Value
+					return envVarSplit[0], *secretResp.Value
 				}
-			}
-			Infof("Parsing argument value from env: %s", arg)
-		} else {
-			Infof("Skipping argument value from env: %s", arg)
-			return "", ""
 		}
+		Infof("Parsing argument value from env: %s", arg)
+
 	} else {
 		Info("Skipping argument: " + arg)
 		return "", ""
@@ -165,7 +176,8 @@ func init() {
 		FullTimestamp: true,
 	})
 	// setting debug mode
-	if strings.EqualFold(os.Getenv("debug"), "true") {
+	debug := getEnvVariableByName("debug")
+	if strings.EqualFold( debug, "true" ) {
 		SetLevel(DebugLevel)
 	} else {
 		SetLevel(InfoLevel)
@@ -178,7 +190,9 @@ func init() {
 
 	Debugf("vaultName: %s\n", injector.vaultName)
 }
-
+//
+// main function
+//
 func main() {
 	Infof("%s Starting azure key vault env injector", logPrefix)
 	Debug("<<<<<<< Environment BEFORE >>>>>>>>>")
@@ -203,7 +217,6 @@ func main() {
 			if err != nil {
 				Errorf("%s unable to get value for secret:  %v", logPrefix, err.Error())
 			}
-
 			err = generateSecretsFile(mntPath, secName, secret)
 			if err != nil {
 				Errorf("%s unable to generate secrets file:  %v", logPrefix, err.Error())
