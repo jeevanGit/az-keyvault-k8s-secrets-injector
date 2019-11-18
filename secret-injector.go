@@ -20,6 +20,18 @@ import (
 )
 
 //------------------------------------------------------------------------------
+var (
+	injector azureSecretsInjector
+)
+
+const (
+	logPrefix              = "secret-injector:"
+	vaultVarName           = "AzureKeyVault"
+	patternSecretName      = "secret_injector_secret_name_"
+	patternSecretMountPath = "secret_injector_mount_path_"
+)
+
+//------------------------------------------------------------------------------
 // Secrets Injector struct
 type azureSecretsInjector struct {
 	vaultName         string
@@ -83,10 +95,10 @@ func (injector azureSecretsInjector) retrieveSecret(secName string) (string, err
 }
 
 //
-// function takes env variable in form "name=value" and looks for pattern (patternSecretName) to match
+// function takes env variable in form "name=value" and looks for pattern ("SECRET_INJECTOR_SECRET_NAME_") to match
 // if matches, extracts the name of the secret
-// than, finds matching mount path for given secret name
-// return value: (mount path variable name , actual mount path, secret name)
+// than, finds matching mount path for given secret name ("SECRET_INJECTOR_MOUNT_PATH_")
+// return value: ( actual mount path, secret name )
 //
 func (injector azureSecretsInjector) retrieveSecretMountPath(variable string) (string, string) {
 
@@ -154,17 +166,6 @@ func (injector azureSecretsInjector) parseEnvKeyVaultVariable(arg string) (strin
 	return "", ""
 }
 
-//------------------------------------------------------------------------------
-var (
-	injector azureSecretsInjector
-)
-
-const (
-	logPrefix              = "secret-injector:"
-	vaultVarName           = "AzureKeyVault"
-	patternSecretName      = "secret_injector_secret_name_"
-	patternSecretMountPath = "secret_injector_mount_path_"
-)
 
 //------------------------------------------------------------------------------
 //
