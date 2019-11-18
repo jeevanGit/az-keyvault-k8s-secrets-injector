@@ -33,7 +33,6 @@ push: container
 
 container: build
 		-docker build -t $(IMAGE) .
-		cp ./bin/${APP} ./combined
 		rm -f ./bin/${APP}
 
 .PHONY: glide
