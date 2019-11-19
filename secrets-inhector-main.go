@@ -62,8 +62,8 @@ type SecretsInjectorStruct struct {
 
 //------------------------------------------------------------------------------
 func (self *SecretsInjectorStruct) New() (SecretsInjectorStruct, error) {
-	self.envVarSecrets = []SecretVaultEnvVariableStruct{}
-	self.fileSecrets = []SecretVaultFileVariableStruct{}
+	self.envVarSecrets = []SecretVaultEnvVariableStruct{} // ?
+	self.fileSecrets = []SecretVaultFileVariableStruct{} // ?
 
 	for _, pairEnvVar := range os.Environ() {
 		_ := self.initEnvVars(pairEnvVar)
@@ -75,6 +75,8 @@ func (self *SecretsInjectorStruct) New() (SecretsInjectorStruct, error) {
 }
 
 func (self *SecretsInjectorStruct) initEnvVars(pair string) error {
+	v, err := SecretVaultEnvVariableStruct{}.parse(pair)
+	if err != nil { self.addEnvVar(v) }
 	return nil
 }
 func (self *SecretsInjectorStruct) addEnvVar (item SecretVaultEnvVariableStruct) []SecretVaultEnvVariableStruct {
