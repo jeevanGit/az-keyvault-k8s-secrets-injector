@@ -12,7 +12,7 @@ metadata:
 spec:
   containers:
   - name: vault-env-1
-    image: securityopregistrytest.azurecr.io/env-injector:v1alpha1
+    image: securityopregistrytest.azurecr.io/secret-injector:v1alpha3
     args:
       - ls
       - -l
