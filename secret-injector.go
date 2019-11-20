@@ -83,14 +83,6 @@ func main() {
 }
 
 
-//
-// Low level function to get the secret from the vault based on its name
-//
-func getSecret(vaultClient keyvault.BaseClient, vaultname string, secname string) (result keyvault.SecretBundle, err error) {
-	Debugf("%s Making a call to:  https://%s.vault.azure.net to retrieve value for KEY: %s\n", logPrefix, vaultname, secname)
-	return vaultClient.GetSecret(context.Background(), "https://"+vaultname+".vault.azure.net", secname, "")
-}
-
 func pullSecret (vault, secName string) (string, error) {
 	authorizer, err := kvauth.NewAuthorizerFromEnvironment()
 	if err != nil {
@@ -107,7 +99,13 @@ func pullSecret (vault, secName string) (string, error) {
 		return *secretResp.Value, nil
 	}
 }
-
+//
+// Low level function to get the secret from the vault based on its name
+//
+func getSecret(vaultClient keyvault.BaseClient, vaultname string, secname string) (result keyvault.SecretBundle, err error) {
+	Debugf("%s Making a call to:  https://%s.vault.azure.net to retrieve value for KEY: %s\n", logPrefix, vaultname, secname)
+	return vaultClient.GetSecret(context.Background(), "https://"+vaultname+".vault.azure.net", secname, "")
+}
 
 //
 // Function  creates secrets file, writes secret to it and makes file read-only
@@ -146,8 +144,6 @@ func generateSecretsFile(mntPath, secName, secret string) error {
 	}
 	return nil
 }
-
-
 
 //
 // debug function
