@@ -49,7 +49,7 @@ func main() {
 			InitContainers: []apiv1.Container{
 				{
 					Name:            "secret-injector-init",
-					Image:           "securityopregistrytest.azurecr.io/secret-injector:v1alpha1",
+					Image:           "securityopregistrytest.azurecr.io/secret-injector:v1alpha3",
 					Command:         []string{"sh", "-c", "cp /usr/local/bin/* /azure-keyvault/"},
 					ImagePullPolicy: apiv1.PullAlways,
 					VolumeMounts: []apiv1.VolumeMount{
