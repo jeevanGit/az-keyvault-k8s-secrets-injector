@@ -26,7 +26,6 @@ import (
 	//	"github.com/Azure/go-autorest/autorest"
 )
 const (
-	logPrefix              = "secret-injector:"
 	vaultVarName           = "AzureKeyVault"
 	patternSecretName      = "secret_injector_secret_name_"
 	patternSecretMountPath = "secret_injector_mount_path_"
@@ -82,8 +81,6 @@ func (self *SecretsInjectorStruct) New() (SecretsInjectorStruct, error) {
 		_ = self.initEnvVars(pairEnvVar)
 		_ = self.initFileVars(pairEnvVar)
 	}
-	json, _ := self.MarshalEnvVarToJson()
-	fmt.Println("fyi... marshaled: ", json)
 
 	return *self, nil
 }
@@ -120,6 +117,22 @@ func (self *SecretsInjectorStruct) addEnvVar (item SecretVaultEnvVariableStruct)
 	self.EnvVarSecrets = append(self.EnvVarSecrets, item)
 	return self.EnvVarSecrets
 }
+
+type getVaultSecretFunction func(vault, secName string) (string, error)
+
+func (self *SecretsInjectorStruct)PopulateSecret(fn getVaultSecretFunction) error {
+	for index, _ := range self.EnvVarSecrets {
+		s, err := fn( self.VaultNameDefault, self.EnvVarSecrets[index].SecName )
+		if err != nil {
+			//fmt.Println("fyi... PopulateSecret error: ", err)
+			s := fmt.Sprintf("Could not parse variable: %s ", err.Error() )
+			return errors.New(s)
+		}
+		self.EnvVarSecrets[index].Secret = s
+	}
+	return nil
+}
+
 //------------------------------------------------------------------------------
 // Section deals with File based Secrets
 func (self *SecretsInjectorStruct) initFileVars(pair string) error {
@@ -138,7 +151,7 @@ func (self *SecretVaultFileVariableStruct) parse (item string) (SecretVaultFileV
 	// matching to pattern
 	if envVarSplit[0] != "" && strings.Contains(strings.TrimSpace(strings.ToLower(envVarSplit[0])) , strings.ToLower(patternSecretName)) {
 		envSecSubName := stringBetween( strings.ToLower(item), strings.ToLower( patternSecretName ), "=" )
-		mntPath := getEnvVariableByName( strings.ToLower( patternSecretMountPath+ envSecSubName ) )
+		mntPath := GetEnvVariableByName( strings.ToLower( patternSecretMountPath+ envSecSubName ) )
 		// populate SecretVaultFileVariableStruct
 		return SecretVaultFileVariableStruct{
 			SecName: envSecName,
@@ -176,7 +189,7 @@ func stringBetween(value string, a string, b string) string {
 //
 // Function retrieves environment variable value based on its name
 //
-func getEnvVariableByName(variableName string) string {
+func GetEnvVariableByName(variableName string) string {
 	environ := os.Environ()
 	for _, pair := range environ {
 		if strings.Contains(pair, "=") {
