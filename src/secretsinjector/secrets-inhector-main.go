@@ -6,24 +6,9 @@ import (
 	"fmt"
 	"strings"
 	"errors"
-
-	/*
-		"context"
-		"errors"
-		"io/ioutil"
-		"net/http"
-		"net/http/httputil"
-	*/
-
 	"os"
 
-	//	"os/exec"
-	//	"strings"
-	//	"syscall"
-
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/keyvault"
-	//	kvauth "github.com/Azure/azure-sdk-for-go/services/keyvault/auth"
-	//	"github.com/Azure/go-autorest/autorest"
 )
 const (
 	vaultVarName           = "AzureKeyVault"
@@ -31,7 +16,6 @@ const (
 	patternSecretMountPath = "secret_injector_mount_path_"
 )
 //------------------------------------------------------------------------------
-
 //
 // Secret-Vault Env Variable struct
 //
@@ -76,16 +60,15 @@ func (self *SecretsInjectorStruct) New() (SecretsInjectorStruct, error) {
 	self.FileSecrets = make([]SecretVaultFileVariableStruct, 0)
 
 	for _, pairEnvVar := range os.Environ() {
-		fmt.Println("Processing env var: ", pairEnvVar)
+		//fmt.Println("Processing env var: ", pairEnvVar)
 		self.setDefaultVault(pairEnvVar)
 		_ = self.initEnvVars(pairEnvVar)
 		_ = self.initFileVars(pairEnvVar)
 	}
-
 	return *self, nil
 }
 //------------------------------------------------------------------------------
-func (self *SecretsInjectorStruct) setDefaultVault(pair string) {
+func (self *SecretsInjectorStruct) setDefaultVault (pair string) {
 	envVarSplit := strings.Split(pair, "=")
 	if envVarSplit[0] != "" && strings.TrimSpace(strings.ToLower(envVarSplit[0])) == strings.ToLower(vaultVarName) {  self.VaultNameDefault = envVarSplit[1]  }
 }
@@ -93,9 +76,7 @@ func (self *SecretsInjectorStruct) setDefaultVault(pair string) {
 // Section deals with Env Variables Secrets
 func (self *SecretsInjectorStruct) initEnvVars(pair string) error {
 	v, err := (&SecretVaultEnvVariableStruct{}).parse(pair)
-	if err == nil {
-		self.addEnvVar(v)
-	}
+	if err == nil { self.addEnvVar(v) }
 	return nil
 }
 func (self *SecretVaultEnvVariableStruct) parse (item string) (SecretVaultEnvVariableStruct, error) {
@@ -118,17 +99,28 @@ func (self *SecretsInjectorStruct) addEnvVar (item SecretVaultEnvVariableStruct)
 	return self.EnvVarSecrets
 }
 
-type getVaultSecretFunction func(vault, secName string) (string, error)
+//------------------------------------------------------------------------------
+// Section deals with reaching out to secrets store and populating secrets part of structs
 
+// external function responsible for providing functionality of pulling secrets specific to the secrets store or vault
+type getVaultSecretFunction func(vault, secName string) (string, error)
+// populate the secrets based on the implementation of specific vault store (fn)
 func (self *SecretsInjectorStruct)PopulateSecret(fn getVaultSecretFunction) error {
 	for index, _ := range self.EnvVarSecrets {
 		s, err := fn( self.VaultNameDefault, self.EnvVarSecrets[index].SecName )
 		if err != nil {
-			//fmt.Println("fyi... PopulateSecret error: ", err)
-			s := fmt.Sprintf("Could not parse variable: %s ", err.Error() )
+			s := fmt.Sprintf("Could not get the secret %s, error: %s ", self.EnvVarSecrets[index].SecName , err.Error() )
 			return errors.New(s)
 		}
 		self.EnvVarSecrets[index].Secret = s
+	}
+	for index, _ := range self.FileSecrets {
+		s, err := fn( self.VaultNameDefault, self.FileSecrets[index].SecName )
+		if err != nil {
+			s := fmt.Sprintf("Could not get the secret %s, error: %s ", self.FileSecrets[index].SecName , err.Error() )
+			return errors.New(s)
+		}
+		self.FileSecrets[index].Secret = s
 	}
 	return nil
 }
