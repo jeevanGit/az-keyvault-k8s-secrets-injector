@@ -10,8 +10,10 @@ import (
 	"net/http/httputil"
 	"os"
 	"os/exec"
+	_ "os/exec"
 	"strings"
 	"syscall"
+	_ "syscall"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/keyvault"
 	kvauth "github.com/Azure/azure-sdk-for-go/services/keyvault/auth"
@@ -20,219 +22,9 @@ import (
 
 	secinject "secretsinjector"
 )
-
-func main() {
-
-	sv := secinject.SecretsInjectorStruct{}
-	_, _ = (&sv).New()
-
-}
-//------------------------------------------------------------------------------
-var (
-	injector azureSecretsInjector
-)
 const (
 	logPrefix              = "secret-injector:"
-	vaultVarName           = "AzureKeyVault"
-	patternSecretName      = "secret_injector_secret_name_"
-	patternSecretMountPath = "secret_injector_mount_path_"
 )
-//------------------------------------------------------------------------------
-//
-// Secret-Vault Env Variable struct
-//
-type SecretVaultVariable struct {
-	secName    string
-	vaultName  string
-	envVarName string
-	isValid    bool
-}
-//
-// Generates SecretVaultVariable struct from string var
-//
-func (SecretVaultVariable) importFromEnvVariable(envVar string) (*SecretVaultVariable, error) {
-	svv := new(SecretVaultVariable)
-	if err := svv.parse(envVar); err != nil {
-		svv.isValid = false
-		return svv, err
-	}
-	return svv, nil
-}
-// parse and validate
-func (self *SecretVaultVariable) parse (envVar string) error {
-	if self.detectSecretVaultPattern(envVar) != true {
-		s := fmt.Sprintf("Error: desired pattern not found in %s ", envVar)
-		return errors.New(s)
-	}
-	if strings.Count(envVar, "=") > 1 { s := fmt.Sprintf("Error: incorrect usage of `=` in %s ", envVar); return errors.New(s) }
-	envVarSplit := strings.Split(envVar, "=")
-	self.envVarName = envVarSplit[0]
-	if strings.Count(envVar, "@") > 1 { s := fmt.Sprintf("Error: incorrect usage of `@ in %s ", envVar); return errors.New(s) }
-	secNameSplit := strings.Split(envVarSplit[1], "@")
-	self.secName = secNameSplit[0]
-	self.vaultName = secNameSplit[1]
-	return nil
-}
-
-//
-// detects pattern "envVar=secret-name@AzureKeyVault"
-//
-func (SecretVaultVariable) detectSecretVaultPattern(p string) bool {
-	if strings.Contains(p, "=") && strings.Contains(p, "@") {
-		envVarSplit := strings.Split(p, "=")
-		if len(envVarSplit) != 2 {
-			return false
-		}
-		if envVarSplit[1] == "" {
-			return false
-		}
-		secNameSplit := strings.Split(envVarSplit[1], "@")
-		if len(secNameSplit) != 2 {
-			return false
-		}
-	}
-	return true
-}
-//------------------------------------------------------------------------------
-// Secrets Injector struct
-type azureSecretsInjector struct {
-	vaultName         string
-	vaultVariableName string
-	vaultClient       keyvault.BaseClient
-}
-
-//
-// Getter of existing azureSecretsInjector instance
-//
-func (injector azureSecretsInjector) Get() azureSecretsInjector {
-	return injector
-}
-
-//
-// Utility function to set baseClient
-//
-func (injector azureSecretsInjector) SetVaultClient(vc keyvault.BaseClient) {
-	injector.vaultClient = vc
-}
-
-//
-// Function generates new vault authorizer
-//
-func (injector azureSecretsInjector) NewKeyvaultClient() keyvault.BaseClient {
-	var bc keyvault.BaseClient
-	authorizer, err := kvauth.NewAuthorizerFromEnvironment()
-	if err != nil {
-		Errorf("Can't initialize authorizer: %v\n", err)
-		return bc
-	}
-	bc = keyvault.New()
-	bc.Authorizer = authorizer
-	return bc
-}
-
-//
-// Function creates new instance of azureSecretsInjector
-//
-func (injector azureSecretsInjector) New() azureSecretsInjector {
-	return azureSecretsInjector{
-		vaultVariableName: vaultVarName,
-		vaultName:         getEnvVariableByName(vaultVarName),
-		vaultClient:       injector.NewKeyvaultClient(),
-	}
-}
-
-//
-// Function to retrive the secret from the vault based on its name
-//
-func (injector azureSecretsInjector) retrieveSecret(secName string) (string, error) {
-	sec := ""
-	secretResp, err := getSecret(injector.vaultClient, injector.vaultName, secName)
-	if err != nil {
-		s := fmt.Sprintf("%v", err.Error())
-		return "", errors.New(s)
-	} else {
-		sec = *secretResp.Value
-	}
-	return sec, nil
-}
-
-//
-// function takes env variable in form "name=value" and looks for pattern ("SECRET_INJECTOR_SECRET_NAME_") to match
-// if matches, extracts the name of the secret
-// than, finds matching mount path for given secret name ("SECRET_INJECTOR_MOUNT_PATH_")
-// return value: ( actual mount path, secret name )
-//
-func (injector azureSecretsInjector) retrieveSecretMountPath(variable string) (string, string) {
-
-	if strings.Contains(strings.ToLower(variable), patternSecretName) {
-		var secName string
-		Debugf("Found matching env variable: %s", strings.ToLower(variable))
-
-		secSeq := between(strings.ToLower(variable), patternSecretName, "=")
-		split := strings.Split(strings.ToLower(variable), "=")
-		if split[1] != "" {
-			secName = split[1]
-		}
-
-		var mntPath = getEnvVariableByName(patternSecretMountPath + secSeq)
-		if mntPath != "" {
-			Debugf("Found matching mount path '%s' for secret '%s'", mntPath, secName)
-			return mntPath, secName
-		} else {
-			Debugf("Can't find matching mount path for secret '%s'", secName)
-		}
-		Debugf("Injecting file-based secret : %s to file %s ", secName, mntPath)
-
-	} else {
-		Debugf("Skipping variable: %s", strings.ToLower(variable))
-	}
-	return "", ""
-}
-
-
-//
-// function takes secret-name@AzureKeyVault and returns (secret-name, actual secret from vault)
-//
-func (injector azureSecretsInjector) parseEnvKeyVaultVariable(arg string) (string, string) {
-
-	var secName string
-
-	if (*SecretVaultVariable)(nil).detectSecretVaultPattern(arg) == true {
-		svv, err := (*SecretVaultVariable)(nil).importFromEnvVariable( arg )
-		if err != nil {
-			Errorf("%s unable parse env variable '%s'. Error:  %v", logPrefix, arg, err.Error())
-			return "", ""
-		}
-		secName = svv.secName
-
-		// all this replaced by above
-		envVarSplit := strings.Split(arg, "=")
-		if strings.Contains(envVarSplit[1], "@") { // detected explicate assigment of vault
-			tmp := strings.Split(string(envVarSplit[1]), "@")
-			secName = tmp[0]
-			Infof("Explicit Vault assigment detected : %s", arg)
-		}
-
-		Debugf("engaging vault service for vault '%s', with key '%s'", injector.vaultName, secName)
-		if secName != "" {
-			secretResp, err := getSecret(injector.vaultClient, injector.vaultName, secName)
-			if err != nil {
-				Errorf("%s unable to get value for secret %s from vault %s. Error:  %v", logPrefix, secName, injector.vaultName, err.Error())
-				return "", ""
-			} else {
-				Debugf(">>> secretResp.Value: %s", *secretResp.Value)
-				return envVarSplit[0], *secretResp.Value
-			}
-		}
-		Infof("Parsing argument value from env: %s", arg)
-
-	} else {
-		Info("Skipping argument: " + arg)
-		return "", ""
-	}
-	return "", ""
-}
-
 //------------------------------------------------------------------------------
 //
 // initialize/set environment
@@ -243,7 +35,7 @@ func init() {
 		FullTimestamp: true,
 	})
 	// setting debug mode
-	debug := getEnvVariableByName("debug")
+	debug := secinject.GetEnvVariableByName("debug")
 	if strings.EqualFold(debug, "true") {
 		SetLevel(DebugLevel)
 	} else {
@@ -252,49 +44,26 @@ func init() {
 	SetFormatter(&TextFormatter{})
 	// custom auth
 	_ = os.Setenv("CUSTOM_AUTH_INJECT", "true")
-	// populate azureSecretsInjector struct
-	injector = injector.New()
-
-	Debugf("vaultName: %s\n", injector.vaultName)
 }
 
-//
-// main function
-//
+func main() {
+	// init
+	sv := secinject.SecretsInjectorStruct{}
+	_, _ = sv.New()
 
-func main_main() {
-	Infof("%s Starting azure key vault env injector", logPrefix)
-	Debug("<<<<<<< Environment BEFORE >>>>>>>>>")
-	printEnv()
+	// populate secrets from vault
+	_ = sv.PopulateSecret(pullSecret)
 
-	for _, pair := range os.Environ() {
-		//
-		// Parse env variables and populate env vars from keyvault
-		//
-		envname, envvar := injector.parseEnvKeyVaultVariable(pair)
-		if envname != "" {
-			_ = os.Setenv(envname, envvar)
-		}
-		//
-		// Parse env variables and populate files with secrets
-		//
-		mntPath, secName := injector.retrieveSecretMountPath(pair)
-		if mntPath != "" {
-
-			// get secret based on the name
-			secret, err := injector.retrieveSecret(secName)
-			if err != nil {
-				Errorf("%s unable to get value for secret:  %v", logPrefix, err.Error())
-			}
-			err = generateSecretsFile(mntPath, secName, secret)
-			if err != nil {
-				Errorf("%s unable to generate secrets file:  %v", logPrefix, err.Error())
-			}
+	// apply secrets to Pod env
+	for index, _ := range sv.EnvVarSecrets {
+		_ = os.Setenv(sv.EnvVarSecrets[index].EnvVarName, sv.EnvVarSecrets[index].Secret)
+	}
+	for index, _ := range sv.FileSecrets {
+		err := generateSecretsFile( sv.FileSecrets[index].FileMntPath, sv.FileSecrets[index].SecName, sv.FileSecrets[index].Secret )
+		if err != nil {
+			Errorf("%s unable to generate secrets file:  %v", logPrefix, err.Error())
 		}
 	}
-
-	Debug("<<<<<<< Environment AFTER >>>>>>>>>")
-	printEnv()
 
 	if len(os.Args) == 1 {
 		Fatalf("%s no command is given, currently vault-env can't determine the entrypoint (command), please specify it explicitly", logPrefix)
@@ -309,57 +78,36 @@ func main_main() {
 			Errorf("%s failed to exec process '%s': %s", logPrefix, binary, err.Error())
 		}
 	}
-
 	Debugf("%s azure key vault env injector successfully injected env variables with secrets", logPrefix)
 	Debugf("%s shutting down azure key vault env injector", logPrefix)
 }
 
-//
-// Utility function designed to extract substring between 2 strings
-//
-func between(value string, a string, b string) string {
-	// Get substring between two strings.
-	posFirst := strings.Index(value, a)
-	if posFirst == -1 {
-		return ""
-	}
-	posLast := strings.Index(value, b)
-	if posLast == -1 {
-		return ""
-	}
-	posFirstAdjusted := posFirst + len(a)
-	if posFirstAdjusted >= posLast {
-		return ""
-	}
-	return value[posFirstAdjusted:posLast]
-}
 
 //
-// Prints all environment values
+// Low level function to get the secret from the vault based on its name
 //
-func printEnv() {
-	environ := os.Environ()
-	for _, pair := range environ {
-		Debug(pair)
+func getSecret(vaultClient keyvault.BaseClient, vaultname string, secname string) (result keyvault.SecretBundle, err error) {
+	Debugf("%s Making a call to:  https://%s.vault.azure.net to retrieve value for KEY: %s\n", logPrefix, vaultname, secname)
+	return vaultClient.GetSecret(context.Background(), "https://"+vaultname+".vault.azure.net", secname, "")
+}
+
+func pullSecret (vault, secName string) (string, error) {
+	authorizer, err := kvauth.NewAuthorizerFromEnvironment()
+	if err != nil {
+		s := fmt.Sprintf("Can't initialize authorizer: %v", err.Error())
+		return "", errors.New(s)
+	}
+	bc := keyvault.New()
+	bc.Authorizer = authorizer
+	secretResp, err := getSecret(bc, vault, secName)
+	if err != nil {
+		s := fmt.Sprintf("%v", err.Error())
+		return "", errors.New(s)
+	} else {
+		return *secretResp.Value, nil
 	}
 }
 
-//
-// Function retrieves environment variable value based on its name
-//
-func getEnvVariableByName(variableName string) string {
-	environ := os.Environ()
-	for _, pair := range environ {
-		Debug(pair)
-		if strings.Contains(pair, "=") {
-			split := strings.Split(pair, "=")
-			if strings.EqualFold(strings.TrimSpace(variableName), strings.TrimSpace(split[0])) {
-				return split[1]
-			}
-		}
-	}
-	return ""
-}
 
 //
 // Function  creates secrets file, writes secret to it and makes file read-only
@@ -399,13 +147,7 @@ func generateSecretsFile(mntPath, secName, secret string) error {
 	return nil
 }
 
-//
-// Low level function to get the secret from the vault based on its name
-//
-func getSecret(vaultClient keyvault.BaseClient, vaultname string, secname string) (result keyvault.SecretBundle, err error) {
-	Debugf("%s Making a call to:  https://%s.vault.azure.net to retrieve value for KEY: %s\n", logPrefix, vaultname, secname)
-	return vaultClient.GetSecret(context.Background(), "https://"+vaultname+".vault.azure.net", secname, "")
-}
+
 
 //
 // debug function
