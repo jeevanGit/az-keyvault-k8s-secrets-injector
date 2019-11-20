@@ -17,7 +17,16 @@ import (
 	kvauth "github.com/Azure/azure-sdk-for-go/services/keyvault/auth"
 	"github.com/Azure/go-autorest/autorest"
 	. "github.com/sirupsen/logrus"
+
+	secinject "secretsinjector"
 )
+
+func main() {
+	sv := secinject.SecretsInjectorStruct{}
+	_, _ = (&sv).New()
+
+}
+
 
 //------------------------------------------------------------------------------
 var (
@@ -30,7 +39,63 @@ const (
 	patternSecretName      = "secret_injector_secret_name_"
 	patternSecretMountPath = "secret_injector_mount_path_"
 )
+//------------------------------------------------------------------------------
 
+//
+// Secret-Vault Env Variable struct
+//
+type SecretVaultVariable struct {
+	secName    string
+	vaultName  string
+	envVarName string
+	isValid    bool
+}
+//
+// Generates SecretVaultVariable struct from string var
+//
+func (SecretVaultVariable) importFromEnvVariable(envVar string) (*SecretVaultVariable, error) {
+	svv := new(SecretVaultVariable)
+	if err := svv.parse(envVar); err != nil {
+		svv.isValid = false
+		return svv, err
+	}
+	return svv, nil
+}
+// parse and validate
+func (self *SecretVaultVariable) parse (envVar string) error {
+	if self.detectSecretVaultPattern(envVar) != true {
+		s := fmt.Sprintf("Error: desired pattern not found in %s ", envVar)
+		return errors.New(s)
+	}
+	if strings.Count(envVar, "=") > 1 { s := fmt.Sprintf("Error: incorrect usage of `=` in %s ", envVar); return errors.New(s) }
+	envVarSplit := strings.Split(envVar, "=")
+	self.envVarName = envVarSplit[0]
+	if strings.Count(envVar, "@") > 1 { s := fmt.Sprintf("Error: incorrect usage of `@ in %s ", envVar); return errors.New(s) }
+	secNameSplit := strings.Split(envVarSplit[1], "@")
+	self.secName = secNameSplit[0]
+	self.vaultName = secNameSplit[1]
+	return nil
+}
+
+//
+// detects pattern "envVar=secret-name@AzureKeyVault"
+//
+func (SecretVaultVariable) detectSecretVaultPattern(p string) bool {
+	if strings.Contains(p, "=") && strings.Contains(p, "@") {
+		envVarSplit := strings.Split(p, "=")
+		if len(envVarSplit) != 2 {
+			return false
+		}
+		if envVarSplit[1] == "" {
+			return false
+		}
+		secNameSplit := strings.Split(envVarSplit[1], "@")
+		if len(secNameSplit) != 2 {
+			return false
+		}
+	}
+	return true
+}
 //------------------------------------------------------------------------------
 // Secrets Injector struct
 type azureSecretsInjector struct {
@@ -127,58 +192,6 @@ func (injector azureSecretsInjector) retrieveSecretMountPath(variable string) (s
 	return "", ""
 }
 
-//
-// Secret-Vault Env Variable struct
-//
-type SecretVaultVariable struct {
-	secName    string
-	vaultName  string
-	envVarName string
-	isValid    bool
-}
-
-func (SecretVaultVariable) importFromEnvVariable(envVar string) (*SecretVaultVariable, error) {
-	svv := new(SecretVaultVariable)
-	if err := svv.parse(envVar); err != nil {
-		svv.isValid = false
-		return svv, err
-	}
-	return svv, nil
-}
-func (self *SecretVaultVariable) parse(envVar string) error {
-	if self.detectSecretVaultPattern(envVar) != true {
-		s := fmt.Sprintf("Error: desired pattern not found in %s ", envVar)
-		return errors.New(s)
-	}
-	if strings.Count(envVar, "=") > 1 { s := fmt.Sprintf("Error: incorrect usage of `=` in %s ", envVar); return errors.New(s) }
-	envVarSplit := strings.Split(envVar, "=")
-	self.envVarName = envVarSplit[0]
-	if strings.Count(envVar, "@") > 1 { s := fmt.Sprintf("Error: incorrect usage of `@ in %s ", envVar); return errors.New(s) }
-	secNameSplit := strings.Split(envVarSplit[1], "@")
-	self.secName = secNameSplit[0]
-	self.vaultName = secNameSplit[1]
-	return nil
-}
-
-//
-// detects pattern "envVar=secret-name@AzureKeyVault"
-//
-func (SecretVaultVariable) detectSecretVaultPattern(p string) bool {
-	if strings.Contains(p, "=") && strings.Contains(p, "@") {
-		envVarSplit := strings.Split(p, "=")
-		if len(envVarSplit) != 2 {
-			return false
-		}
-		if envVarSplit[1] == "" {
-			return false
-		}
-		secNameSplit := strings.Split(envVarSplit[1], "@")
-		if len(secNameSplit) != 2 {
-			return false
-		}
-	}
-	return true
-}
 
 //
 // function takes secret-name@AzureKeyVault and returns (secret-name, actual secret from vault)
@@ -193,8 +206,10 @@ func (injector azureSecretsInjector) parseEnvKeyVaultVariable(arg string) (strin
 			Errorf("%s unable parse env variable '%s'. Error:  %v", logPrefix, arg, err.Error())
 			return "", ""
 		}
-		envVarSplit := strings.Split(arg, "=")
+		secName = svv.secName
 
+		// all this replaced by above
+		envVarSplit := strings.Split(arg, "=")
 		if strings.Contains(envVarSplit[1], "@") { // detected explicate assigment of vault
 			tmp := strings.Split(string(envVarSplit[1]), "@")
 			secName = tmp[0]
@@ -249,7 +264,8 @@ func init() {
 //
 // main function
 //
-func main() {
+
+func main_main() {
 	Infof("%s Starting azure key vault env injector", logPrefix)
 	Debug("<<<<<<< Environment BEFORE >>>>>>>>>")
 	printEnv()
