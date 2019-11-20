@@ -97,25 +97,6 @@ By default each Pod using the Secrets Injector pattern must provide their own cr
 
 To avoid that, support for a more convenient solution is added where the Azure Key Vault credentials in the Secrets Injector(using Authentication options below) is "forwarded" to the the Pods. This is enabled by setting the environment variable CUSTOM_AUTH_INJECT to true. Secrets Injectorwill then create a Kubernetes Secret containing the credentials and modify the Pod's env section to reference the credentials in the Secret.
 
-#### Custom Authentication Options
-
-The following authentication options are available:
-
-| Authentication type |	Environment variable |	Description |
-| ------------------- | -------------------- | ------------ |
-| Managed identities for Azure resources (used to be MSI) | | No credentials are needed for managed identity authentication. The Kubernetes cluster must be running in Azure and the `aad-pod-identity` controller must be installed. A `AzureIdentity` and `AzureIdentityBinding` must be defined. See https://github.com/Azure/aad-pod-identity for details. |
-| Client credentials 	| AZURE_TENANT_ID 	   | The ID for the Active Directory tenant that the service principal belongs to. |
-|                     |	AZURE_CLIENT_ID 	   | The name or ID of the service principal. |
-|                     |	AZURE_CLIENT_SECRET  | The secret associated with the service principal. |
-| Certificate 	      | AZURE_TENANT_ID      | The ID for the Active Directory tenant that the certificate is registered with. |
-|                     | AZURE_CLIENT_ID      | The application client ID associated with the certificate. |
-|                     | AZURE_CERTIFICATE_PATH | The path to the client certificate file. |
-|                     | AZURE_CERTIFICATE_PASSWORD | The password for the client certificate. |
-| Username/Password   | AZURE_TENANT_ID | The ID for the Active Directory tenant that the user belongs to. |
-|                     | AZURE_CLIENT_ID | The application client ID. |
-|                     | AZURE_USERNAME  | The username to sign in with.
-|                     | AZURE_PASSWORD  | The password to sign in with. |
-
 
 ## Authorization
 
