@@ -22,17 +22,15 @@ import (
 )
 
 func main() {
+
 	sv := secinject.SecretsInjectorStruct{}
 	_, _ = (&sv).New()
 
 }
-
-
 //------------------------------------------------------------------------------
 var (
 	injector azureSecretsInjector
 )
-
 const (
 	logPrefix              = "secret-injector:"
 	vaultVarName           = "AzureKeyVault"
@@ -40,7 +38,6 @@ const (
 	patternSecretMountPath = "secret_injector_mount_path_"
 )
 //------------------------------------------------------------------------------
-
 //
 // Secret-Vault Env Variable struct
 //
