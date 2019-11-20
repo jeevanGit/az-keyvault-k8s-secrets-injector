@@ -8,13 +8,20 @@ include vars-az.mk
 
 APP?=secret-injector
 APIVER?=v1
-RELEASE?=v1alpha1
+RELEASE?=v1alpha3
 IMAGE?=${DOCKER_ORG}/${APP}:${RELEASE}
 ENV?=DEV
 
 
 clean:
 		rm -f ./bin/${APP}
+
+build-mac: clean
+		echo "GOPATH: " ${GOPATH}
+		CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build \
+			-ldflags "-s -w -X version.Release=${RELEASE} \
+			-X version.Commit=${COMMIT} -X version.BuildTime=${BUILD_TIME}" \
+			-o ./bin/${APP}
 
 build: clean
 		echo "GOPATH: " ${GOPATH}
