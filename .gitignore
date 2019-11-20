@@ -1,6 +1,5 @@
 tmp.*
 vars*.mk
-Dockerfile
 secret.yml
 tmp-secrets.yaml
 
