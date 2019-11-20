@@ -183,6 +183,7 @@ This step compiles binary and places it under `./bin` directory.
 Then, build image `secret-injector:v1alpha1` and push it to ACR instance:
 
 ```
+export GOPATH=$GOPATH:$(pwd)
 make push
 ```
 
