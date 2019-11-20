@@ -58,15 +58,9 @@ func main() {
 						},
 					},
 					Env: []apiv1.EnvVar{
-						{
-							Name: "AzureKeyVault", Value: "aks-AC0001-keyvault",
-						},
-						{
-							Name: "env_secret_name", Value: "secret1@AzureKeyVault",
-						},
-						{
-							Name: "debug", Value: "true",
-						},
+						{ Name: "AzureKeyVault", Value: "aks-AC0001-keyvault", },
+						{ Name: "env_secret_name", Value: "secret1@AzureKeyVault", },
+						{ Name: "debug", Value: "true", },
 					},
 				},
 				{
@@ -84,7 +78,7 @@ func main() {
 				{
 					Name:            "test-client",
 					Image:           "securityopregistrytest.azurecr.io/test-client:v1alpha1",
-					Command:         []string{"sh", "-c", "/azure-keyvault/secret-injector /my-application-script.sh"},
+					Command:         []string{"sh", "-c", "/azure-keyvault/secret-injector /my-application-script.sh && sleep 1000"},
 					ImagePullPolicy: apiv1.PullAlways,
 					VolumeMounts: []apiv1.VolumeMount{
 						{
@@ -94,11 +88,12 @@ func main() {
 					},
 					Env: []apiv1.EnvVar{
 						{Name: "AzureKeyVault", Value: "aks-AC0001-keyvault",},
-						{Name: "env_secret_name", Value: "secret1@AzureKeyVault",},
+						{Name: "env_secret_num1", Value: "secret1@AzureKeyVault",},
+						{Name: "env_secret_num2", Value: "secret2@AzureKeyVault",},
 						{Name: "debug", Value: "true",},
-						{Name: "SECRET_INJECTOR_SECRET_NAME_1", Value: "secret1",},
+						{Name: "SECRET_INJECTOR_SECRET_NAME_1", Value: "secret3",},
 						{Name: "SECRET_INJECTOR_MOUNT_PATH_1", Value: "/etc/secrets",},
-						{Name: "SECRET_INJECTOR_SECRET_NAME_secret2", Value: "secret1",},
+						{Name: "SECRET_INJECTOR_SECRET_NAME_secret2", Value: "secret4",},
 						{Name: "SECRET_INJECTOR_MOUNT_PATH_secret2", Value: "/etc/secrets",},
 					},
 				},
