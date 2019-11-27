@@ -76,6 +76,7 @@ func main() {
 		err = syscall.Exec(binary, os.Args[1:], os.Environ())
 		if err != nil {
 			Errorf("%s failed to exec process '%s': %s", logPrefix, binary, err.Error())
+			return
 		}
 	}
 	Debugf("%s azure key vault env injector successfully injected env variables with secrets", logPrefix)
