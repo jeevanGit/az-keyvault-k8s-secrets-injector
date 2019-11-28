@@ -18,7 +18,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/keyvault"
 	kvauth "github.com/Azure/azure-sdk-for-go/services/keyvault/auth"
 	"github.com/Azure/go-autorest/autorest"
-	. "github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 
 	secinject "secretsinjector"
 )
@@ -30,18 +30,18 @@ const (
 // initialize/set environment
 //
 func init() {
-	SetFormatter(&TextFormatter{
+	log.SetFormatter(&log.TextFormatter{
 		DisableColors: true,
 		FullTimestamp: true,
 	})
 	// setting debug mode
 	debug := secinject.GetEnvVariableByName("debug")
 	if strings.EqualFold(debug, "true") {
-		SetLevel(DebugLevel)
+		log.SetLevel(log.DebugLevel)
 	} else {
-		SetLevel(InfoLevel)
+		log.SetLevel(log.InfoLevel)
 	}
-	SetFormatter(&TextFormatter{})
+	log.SetFormatter(&log.TextFormatter{})
 	// custom auth
 	_ = os.Setenv("CUSTOM_AUTH_INJECT", "true")
 }
@@ -61,26 +61,26 @@ func main() {
 	for index, _ := range sv.FileSecrets {
 		err := generateSecretsFile( sv.FileSecrets[index].FileMntPath, sv.FileSecrets[index].SecName, sv.FileSecrets[index].Secret )
 		if err != nil {
-			Errorf("%s unable to generate secrets file:  %v", logPrefix, err.Error())
+			log.Errorf("%s unable to generate secrets file:  %v", logPrefix, err.Error())
 		}
 	}
 
 	if len(os.Args) == 1 {
-		Fatalf("%s no command is given, currently vault-env can't determine the entrypoint (command), please specify it explicitly", logPrefix)
+		log.Fatalf("%s no command is given, currently vault-env can't determine the entrypoint (command), please specify it explicitly", logPrefix)
 	} else {
 		binary, err := exec.LookPath(os.Args[1])
 		if err != nil {
-			Errorf("%s binary not found: %s", logPrefix, os.Args[1])
+			log.Errorf("%s binary not found: %s", logPrefix, os.Args[1])
 		}
-		Infof("starting process %s %v", binary, os.Args[1:])
+		log.Infof("starting process %s %v", binary, os.Args[1:])
 		err = syscall.Exec(binary, os.Args[1:], os.Environ())
 		if err != nil {
-			Errorf("%s failed to exec process '%s': %s", logPrefix, binary, err.Error())
+			log.Errorf("%s failed to exec process '%s': %s", logPrefix, binary, err.Error())
 			return
 		}
 	}
-	Debugf("%s azure key vault env injector successfully injected env variables with secrets", logPrefix)
-	Debugf("%s shutting down azure key vault env injector", logPrefix)
+	log.Debugf("%s azure key vault env injector successfully injected env variables with secrets", logPrefix)
+	log.Debugf("%s shutting down azure key vault env injector", logPrefix)
 }
 
 
@@ -104,7 +104,7 @@ func pullSecret (vault, secName string) (string, error) {
 // Low level function to get the secret from the vault based on its name
 //
 func getSecret(vaultClient keyvault.BaseClient, vaultname string, secname string) (result keyvault.SecretBundle, err error) {
-	Debugf("%s Making a call to:  https://%s.vault.azure.net to retrieve value for KEY: %s\n", logPrefix, vaultname, secname)
+	log.Debugf("%s Making a call to:  https://%s.vault.azure.net to retrieve value for KEY: %s\n", logPrefix, vaultname, secname)
 	return vaultClient.GetSecret(context.Background(), "https://"+vaultname+".vault.azure.net", secname, "")
 }
 
@@ -118,7 +118,7 @@ func generateSecretsFile(mntPath, secName, secret string) error {
 		s := fmt.Sprintf("Error creating the file %s: %v", secretsFile, err.Error())
 		return errors.New(s)
 	} else {
-		Debugf("Creating secret file: %s", secretsFile)
+		log.Debugf("Creating secret file: %s", secretsFile)
 		_, err := os.Stat(secretsFile)
 		if err != nil {
 			if os.IsNotExist(err) {
@@ -127,7 +127,7 @@ func generateSecretsFile(mntPath, secName, secret string) error {
 			}
 		} else {
 			// write secret to secrtets file
-			Debugf("Populating secrets file: %s", secretsFile)
+			log.Debugf("Populating secrets file: %s", secretsFile)
 			err := ioutil.WriteFile(secretsFile, []byte(secret), 0666)
 			if err != nil {
 				s := fmt.Sprintf("Can't write to the file: %v", err.Error())
@@ -135,7 +135,7 @@ func generateSecretsFile(mntPath, secName, secret string) error {
 			}
 		}
 		//make file read-only
-		Debugf("Making secrets file: %s read-only", secretsFile)
+		log.Debugf("Making secrets file: %s read-only", secretsFile)
 		err = os.Chmod(secretsFile, 0444)
 		if err != nil {
 			s := fmt.Sprintf("Can't file's permission mask: %v", err.Error())
@@ -154,10 +154,10 @@ func logRequest() autorest.PrepareDecorator {
 		return autorest.PreparerFunc(func(r *http.Request) (*http.Request, error) {
 			r, err := p.Prepare(r)
 			if err != nil {
-				Debugln(err)
+				log.Debugln(err)
 			}
 			dump, _ := httputil.DumpRequestOut(r, true)
-			Debugln(string(dump))
+			log.Debugln(string(dump))
 			return r, err
 		})
 	}
@@ -171,10 +171,10 @@ func logResponse() autorest.RespondDecorator {
 		return autorest.ResponderFunc(func(r *http.Response) error {
 			err := p.Respond(r)
 			if err != nil {
-				Debugln(err)
+				log.Debugln(err)
 			}
 			dump, _ := httputil.DumpResponse(r, true)
-			Debugln(string(dump))
+			log.Debugln(string(dump))
 			return err
 		})
 	}
