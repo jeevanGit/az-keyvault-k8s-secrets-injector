@@ -1,4 +1,4 @@
-# Azure Keyvault Secrets Injector service
+# Kubernetes Secrets Injector
 
 Repo hosts Kubernetes Secrets Injector init-container to retrieve secrets/keys from Azure KeyVault and populate them in form of environment variables as well as secrets files for your application/container.
 
@@ -46,7 +46,7 @@ When the original container starts it will execute the `secret-injector` command
 
 ## Authentication
 
-No credentials are needed for managed identity authentication. The Kubernetes cluster must be running in Azure and the aad-pod-identity controller must be installed. A AzureIdentity and AzureIdentityBinding must be defined. 
+No credentials are needed for managed identity authentication. The Kubernetes cluster must be running in Azure and the aad-pod-identity controller must be installed. A AzureIdentity and AzureIdentityBinding must be defined.
 See https://github.com/Azure/aad-pod-identity for details.
 
 In context of test client deployment, designed for the purpose of testing Secrets Injector, it offers pre-build labels for aad-pod-identity selector
@@ -188,7 +188,7 @@ make push
 At this point, there should be 3 images in total: `test-client:v1alpha1`, `test-deployment:v1alpha1` and `secret-injector:v1alpha1`
 
 
-By looking at `fake-controller.yaml` it should be evident that it takes `<your registry>/test-deployment:v1alpha1` image and creates a pod, which contains binary `test-deployment` was built in previous step. 
+By looking at `fake-controller.yaml` it should be evident that it takes `<your registry>/test-deployment:v1alpha1` image and creates a pod, which contains binary `test-deployment` was built in previous step.
 Source code of binary `test-deployment` located at [./test-deploy/main.go](./test-deploy/main.go), along with corresponding [./test-deploy/Dockerfile](./test-deploy/Dockerfile)
 
 Next step is to execute the test deployment binary:
